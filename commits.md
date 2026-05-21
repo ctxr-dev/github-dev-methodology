@@ -43,7 +43,7 @@ gh api graphql -f query='query($o:String!,$r:String!){repository(owner:$o,name:$
   -f o=<OWNER> -f r=<REPO> --jq '[.data.repository.pullRequests.nodes[].reviews.nodes[].author | select(.__typename == "Bot" and .login == "copilot-pull-request-reviewer")] | first | .id // "NOT_INSTALLED"'
 ```
 
-If the result is a `BOT_...` ID: Copilot IS installed. Cache the bot node ID in `.claude/memory/ctxr-dev.config.local.md` under the `copilot_bot_id` key. Bot IDs are per-installation but stable until Copilot is uninstalled / reinstalled.
+If the result is a `BOT_...` ID: Copilot IS installed. Cache the bot node ID in `.agents/ctxr-dev/github-dev-methodology.config.local.md` under the `copilot_bot_id` key. Bot IDs are per-installation but stable until Copilot is uninstalled / reinstalled.
 
 If the result is `NOT_INSTALLED`: skip Copilot. See "fallback" below.
 
@@ -84,7 +84,7 @@ gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$
 
 If Copilot isn't on the repo:
 
-1. Check `.claude/memory/ctxr-dev.config.local.md` for `default_reviewer`. If set, use it.
+1. Check `.agents/ctxr-dev/github-dev-methodology.config.local.md` for `default_reviewer`. If set, use it.
 2. If not set, ASK the user which human reviewer(s) to use (and write the answer back to the config).
 3. Request via standard REST (works for human users):
    ```bash

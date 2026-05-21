@@ -36,15 +36,15 @@ Until predicate (1) AND (2) AND (3) all hold, the PR is **NOT ready for merge** 
 - **Check every 5 minutes** while the loop is active.
 - **Maximum 24 hours** without a state change before halt-and-ask the user. Idle reviewer time is normal; don't give up early.
 - "No new comments this cycle" is NOT a reason to stop — schedule the next wake-up.
-- Use `ScheduleWakeup` with `delaySeconds: 300` and the `<<autonomous-loop-dynamic>>` sentinel prompt.
+- Schedule a wake-up in ~5 minutes using whatever scheduling primitive your agent harness exposes (a wake-up tool, a cron entry, or a plain `sleep 300` inside the loop). The wake-up resumes the loop from "check exit predicate".
 
 ## Reviewer auto-discovery (run once per project, cache in local config)
 
 Order of precedence:
 
 1. **Copilot is available?** Check via `gh api graphql -f query='{ repository(owner: "<OWNER>", name: "<REPO>") { pullRequest(first: 1) { nodes { reviews(first: 5) { nodes { author { __typename login } } } } } } }'`. Filter for `__typename == "Bot" && login == "copilot-pull-request-reviewer"`. If found, capture the bot node id (see `commits.md` for the extraction snippet).
-2. **Configured `default_reviewer` in `.claude/memory/ctxr-dev.config.local.md`?** Use it.
-3. **Ask the user** which reviewer(s) to use. **Persist the answer** to `.claude/memory/ctxr-dev.config.local.md` so future sessions don't re-ask.
+2. **Configured `default_reviewer` in `.agents/ctxr-dev/github-dev-methodology.config.local.md`?** Use it.
+3. **Ask the user** which reviewer(s) to use. **Persist the answer** to `.agents/ctxr-dev/github-dev-methodology.config.local.md` so future sessions don't re-ask.
 
 ## Loop step-by-step
 
@@ -73,8 +73,6 @@ gh pr create \
 
 ## Test plan
 - [ ] ...
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 
@@ -92,7 +90,7 @@ while true; do
     --json reviewDecision,reviews,reviewThreads,statusCheckRollup,mergeable)
   if echo "$STATE" | jq -e '<exit-predicate>' > /dev/null; then break; fi
   # else: address comments, push fix, resolve threads (see below), reschedule
-  ScheduleWakeup delaySeconds=300 prompt="<<autonomous-loop-dynamic>>"
+  sleep 300  # or whatever scheduling primitive your agent harness exposes
 done
 ```
 

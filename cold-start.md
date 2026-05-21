@@ -6,7 +6,7 @@ How to pick up an issue with zero prior context and start executing within minut
 
 ### Step 1 — Read the methodology config
 
-Open `.claude/memory/ctxr-dev.config.local.md` (the per-project config). Capture:
+Open `.agents/ctxr-dev/github-dev-methodology.config.local.md` (the per-project config). Capture:
 
 - `<PROJECT_URL>` — the project board.
 - `<OWNER>` — the GitHub org.
@@ -14,7 +14,7 @@ Open `.claude/memory/ctxr-dev.config.local.md` (the per-project config). Capture
 - `default_reviewer` — Copilot, named human, or `ask`.
 - Any per-project overrides for cadence / max-duration / poll interval.
 
-If the file is missing, halt and ask the user to populate it from `templates/ctxr-dev.config.local.md` before proceeding.
+If the file is missing, halt and ask the user to populate it from `templates/config.local.md` before proceeding.
 
 ### Step 2 — Read the issue you're about to execute
 

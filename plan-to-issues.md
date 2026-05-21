@@ -131,7 +131,7 @@ gh api graphql -f query='mutation($p:ID!,$i:ID!,$f:ID!,$v:String!){updateProject
 ### Step 9 — Validate (run all 4 scripts)
 
 ```bash
-cd .claude/memory/ctxr-dev/scripts
+cd .agents/ctxr-dev/github-dev-methodology/scripts
 node validate-tree.mjs <ROOT_EPIC_URL>            # parent chain reaches root
 node validate-issue-schema.mjs <OWNER>/<REPO>     # body shape per issue
 node validate-labels.mjs <OWNER>                  # label consistency cross-repo
@@ -151,7 +151,7 @@ Apply highest-leverage findings before declaring migration done.
 
 ### Step 11 — Minimize the original plan file
 
-Per [`plan-deprecation.md`](plan-deprecation.md), the AI rewrites the plan file in-place to its minimal form (title + 1-paragraph + epic link), commits as `docs: migrate plan to <epic-link>`. This is the FINAL step.
+Per [`plan-deprecation.md`](plan-deprecation.md), the agent rewrites the plan file in-place to its minimal form (title + 1-paragraph + epic link), commits as `docs: migrate plan to <epic-link>`. This is the FINAL step.
 
 ## Idempotency
 

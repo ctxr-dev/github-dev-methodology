@@ -64,7 +64,7 @@ Every issue created via the methodology MUST follow this exact body shape. The v
 
 ## Why this strictness
 
-- **Cold-start ready**: a future AI session opening any issue gets the full picture in ≤ 30 seconds.
+- **Cold-start ready**: a future agent session opening any issue gets the full picture in ≤ 30 seconds.
 - **Machine-validatable**: the script checks shape, not content. Discipline at write time prevents drift over months.
 - **Cross-link integrity**: parent / blocker / sibling refs render as clickable in the GH UI.
 - **Audit trail**: every closed issue stays as the canonical reason-for-the-change.

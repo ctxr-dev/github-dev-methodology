@@ -1,83 +1,198 @@
-# claude-dev-methodology-dumb
+<div align="center">
 
-A portable development methodology for AI-driven engineering work that uses GitHub Issues + Projects as the canonical source of truth.
+# Github Dev Methodology
 
-This repo bundles:
+### A portable, agent-agnostic methodology for AI-driven engineering work
+##### One contract for every AI: shared issue shape, PR loop, plan-to-issues migration, validators.
 
-- **The PR review loop** — autonomous polling, exit predicate, reviewer auto-discovery, conventional commits.
-- **Plan → Issues migration recipe** — turn a markdown plan into a fully wired native sub-issue tree on a GitHub Project, with every issue cold-start ready.
-- **Canonical issue body schema** — Metadata table + Why + Action items + Acceptance + Implementation pointers + Test plan. Validator hard-fails on missing sections.
-- **Locked label taxonomy** — `type:*` / `scope:*` / `phase:*` / `release:*` (org-wide) + `area:*` (project-extensible).
-- **Validation scripts** — 4 Node validators: parent-chain walk, issue-schema check, label consistency, plan-vs-issues diff.
-- **Parallel validation pattern** — after every plan migration, spawn 3 Plan agents (completeness / dep-graph / cold-start) scoped to TOUCHED issues only.
-- **Plan deprecation** — once issues exist, the original plan file is auto-minimized to title + 1-paragraph + epic link.
+<p>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge"></a>
+  <a href="https://agents.md"><img alt="Convention: .agents/" src="https://img.shields.io/badge/convention-.agents%2F-7c3aed?style=for-the-badge"></a>
+  <img alt="Node ≥ 20" src="https://img.shields.io/badge/node-%E2%89%A5%2020-43853d?style=for-the-badge&logo=node.js&logoColor=white">
+  <img alt="Source of truth: GitHub Issues + Projects" src="https://img.shields.io/badge/source%20of%20truth-GitHub%20Issues%20%2B%20Projects-181717?style=for-the-badge&logo=github">
+</p>
 
-## Install on any new machine
+<p>
+  <img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-✓-D97757?style=flat-square">
+  <img alt="Codex CLI" src="https://img.shields.io/badge/Codex%20CLI-✓-000000?style=flat-square">
+  <img alt="Cursor" src="https://img.shields.io/badge/Cursor-✓-1e1e1e?style=flat-square">
+  <img alt="Aider" src="https://img.shields.io/badge/Aider-✓-5a2a82?style=flat-square">
+  <img alt="GitHub Copilot" src="https://img.shields.io/badge/Copilot-✓-2ea44f?style=flat-square">
+  <img alt="Continue · Cline · Zed · Warp" src="https://img.shields.io/badge/Continue%20·%20Cline%20·%20Zed%20·%20Warp-✓-6b7280?style=flat-square">
+</p>
 
-Copy this prompt and paste it to your AI:
+<p>
+  <a href="#install"><strong>Install</strong></a> ·
+  <a href="#whats-inside"><strong>What's inside</strong></a> ·
+  <a href="#per-project-configuration"><strong>Configuration</strong></a> ·
+  <a href="#agent-compatibility"><strong>Compatibility</strong></a> ·
+  <a href="#layout"><strong>Layout</strong></a>
+</p>
 
-> [!WARNING]
-> Add the ctxr-dev development methodology to this project. Run these three steps:
->
-> 1. `mkdir -p .claude/memory && cd .claude/memory && git clone https://github.com/ctxr-dev/claude-dev-methodology-dumb.git ctxr-dev`
-> 2. Append `.claude/memory/ctxr-dev` and `.claude/memory/*.local.md` to the project root's `.gitignore` (creating the file if missing). The methodology has its own `.git/` and must NOT be tracked by the outer repo; the `*.local.md` rule keeps the per-project config private.
-> 3. Add this single bullet to `.claude/memory/MEMORY.md` (creating the file if missing): `- [ctxr-dev methodology](ctxr-dev/index.md) — PR loop, plan-to-issues, validation scripts, cold-start schema. ALWAYS read first.`
->
-> Then read `.claude/memory/ctxr-dev/index.md` and follow the methodology going forward.
+</div>
 
-After that one prompt, every future AI session in the project inherits the methodology automatically.
+<br/>
 
-### Why `.gitignore`
+> AI coding agents drift. Different sessions, different agents, and humans on the same team all need **one durable contract** for how work is shaped: how issues are written, how PRs converge to merge, how plans become tracked work. This repo bundles that contract — plus the validators that enforce it — in a form **any agent** can read.
 
-The methodology is its **own git repository** (cloned into your project's `.claude/memory/ctxr-dev/`). The outer project's git would otherwise try to track the methodology's files as ordinary content, which causes:
-
-- Confused submodule warnings (the nested `.git/` directory).
-- Methodology updates appearing as foreign diffs in your project's PRs.
-- Accidental commits of methodology content into your project.
-
-Treating it as a non-tracked subtree avoids all three. To pull methodology updates: `cd .claude/memory/ctxr-dev && git pull`.
-
-## Per-project configuration
-
-The methodology is **project-agnostic**. Per-project values (project board URL, repo names, default reviewer, etc.) live in a gitignored config file the consumer project creates:
-
-```
-<project-root>/.claude/memory/ctxr-dev.config.local.md
-```
-
-Template for this config: [`templates/ctxr-dev.config.local.md`](templates/ctxr-dev.config.local.md). Copy it, fill in your values, add `*.local.md` to your `.gitignore`.
+---
 
 ## What's inside
 
+| Capability | What it does |
+|---|---|
+| 🔁 **PR review loop** | Explicit exit predicate (reviewer approved on HEAD · zero unresolved comments · CI green). 5-min cadence, 24h max. |
+| 📋 **Plan → Issues** | Turn a markdown plan into a wired native sub-issue tree on a GitHub Project. Every issue cold-start ready. |
+| 🎯 **Issue lifecycle** | Single-issue / single-PR flow. Agent owns `In progress` and `In review`; human owns `Done`, merge, close. |
+| 📐 **Canonical issue schema** | Metadata header + Why + Action items + Acceptance + Implementation pointers + Test plan. Validator hard-fails on missing sections. |
+| 🏷️ **Locked label taxonomy** | `type:*` / `scope:*` / `phase:*` / `release:*` (cross-repo locked) + `area:*` (project-extensible). |
+| ✅ **4 Node validators** | Parent-chain walk · issue-schema check · cross-repo label consistency · plan-vs-issues diff. |
+| 🧭 **Agents orchestration** | Default pattern for non-trivial work: push focused work into fresh subagents; orchestrator holds only plan + decisions + compacted history. |
+| 🔍 **Parallel validation** | After every plan migration, 3 audit agents (completeness / dep-graph / cold-start) scoped to TOUCHED issues only. |
+| 🗂️ **Plan deprecation** | Once issues exist, the original plan file is auto-minimized to title + 1-paragraph + epic link. |
+
+---
+
+## Install
+
+Works with any agent that can run shell and edit files. **Copy this prompt and paste it to your AI.**
+
+> [!IMPORTANT]
+> **Install the `github-dev-methodology` into this project.** Every step is idempotent — re-running is safe. **Run all commands from the project root** (the directory you want the methodology installed into).
+>
+> 1. **Clone the methodology under `.agents/`.** Create `.agents/` if missing.
+>    ```sh
+>    mkdir -p .agents/ctxr-dev
+>    if [ ! -d .agents/ctxr-dev/github-dev-methodology/.git ]; then
+>      git clone https://github.com/ctxr-dev/github-dev-methodology.git \
+>        .agents/ctxr-dev/github-dev-methodology
+>    fi
+>    ```
+>
+> 2. **Update `.gitignore` (idempotent).** Run this exact shell block — it creates `.gitignore` if absent, ensures a trailing newline, and appends only patterns that are not already there:
+>    ```sh
+>    touch .gitignore
+>    [ -n "$(tail -c1 .gitignore 2>/dev/null)" ] && printf '\n' >> .gitignore
+>    for line in ".agents/ctxr-dev/github-dev-methodology" "*.local.md"; do
+>      grep -qxF "$line" .gitignore || printf '%s\n' "$line" >> .gitignore
+>    done
+>    ```
+>
+> 3. **Wire `AGENTS.md` at the project root.** Identity key: the URL `.agents/ctxr-dev/github-dev-methodology/index.md` (use this to detect existing entries; never duplicate).
+>    - If `AGENTS.md` does **not** exist, create it with this exact body:
+>      ```markdown
+>      # AGENTS.md
+>
+>      Entry point for AI coding agents working in this project.
+>
+>      ## Methodologies
+>
+>      - [ctxr-dev/github-dev-methodology](.agents/ctxr-dev/github-dev-methodology/index.md) — GitHub Issues + Projects workflow, PR loop, plan-to-issues, validation. **ALWAYS read first.**
+>      ```
+>    - If `AGENTS.md` exists and already contains the identity-key URL, do nothing.
+>    - If `AGENTS.md` exists without the identity-key URL: ensure a `## Methodologies` section exists (append it with a leading blank line if not), then append the bullet above to that section.
+>
+> 4. **Claude Code accommodation.** Claude Code does not natively read `AGENTS.md`; it needs an `@AGENTS.md` import line in `CLAUDE.md`.
+>    - If `CLAUDE.md` exists at the project root: ensure a line containing exactly `@AGENTS.md` is present (match the whole line, ignoring surrounding whitespace). Append it on its own line if missing.
+>    - Else if `.claude/` directory exists at the project root: create `CLAUDE.md` with a single-line body `@AGENTS.md`.
+>    - Else: ask the user once: *"Are you using Claude Code for this project? (y/n)"*. On yes, create the same one-line `CLAUDE.md`. On no, skip.
+>
+> 5. **Create the per-project config from the template (only if missing):**
+>    ```sh
+>    if [ ! -f .agents/ctxr-dev/github-dev-methodology.config.local.md ]; then
+>      cp .agents/ctxr-dev/github-dev-methodology/templates/config.local.md \
+>         .agents/ctxr-dev/github-dev-methodology.config.local.md
+>    fi
+>    ```
+>
+> 6. **Bootstrap.** Read `.agents/ctxr-dev/github-dev-methodology/index.md` and follow it. If the config still contains any `<…>` placeholders (e.g. `<fill: …>`, `<one of: …>`, `<auto-discovered …>`), stop and ask the user to fill them in — at minimum the `active_project` slug plus one `## Project: <slug>` section.
+
+After install, every future session in this project picks up the methodology automatically. To update: `cd .agents/ctxr-dev/github-dev-methodology && git pull`.
+
+---
+
+## Why `.agents/` and `.gitignore`
+
+The methodology is its **own git repository** (cloned under `.agents/ctxr-dev/github-dev-methodology/`). The outer project must **not** track it — otherwise you get nested-`.git/` warnings, methodology updates appearing as foreign diffs in your PRs, and accidental commits of methodology content into your project.
+
+The `*.local.md` rule keeps the per-project config private to each developer — it holds project URLs, org names, reviewer preferences, and auto-discovered bot IDs.
+
+---
+
+## Per-project configuration
+
+| Field | Value |
+|---|---|
+| **Path** | `<project-root>/.agents/ctxr-dev/github-dev-methodology.config.local.md` |
+| **Template** | [`templates/config.local.md`](templates/config.local.md) |
+| **Shape** | One file, one or many GitHub Projects. `## Active` + `## Project: <slug>` sections. |
+| **Selection** | Default = `active_project` in the file. Override per invocation with `--project <slug>`. Schema details: [`local-config.md`](local-config.md). |
+
+---
+
+## Agent compatibility
+
+| Agent | Reads `AGENTS.md` natively? | Wired by install prompt |
+|---|:-:|---|
+| OpenAI Codex CLI | ✅ | direct |
+| Cursor | ✅ | direct |
+| GitHub Copilot | ✅ | direct |
+| Aider · Continue · Cline · Zed · Warp | ✅ | direct |
+| **Claude Code** | ❌ *(May 2026)* | via `@AGENTS.md` import in `CLAUDE.md` |
+
+The methodology docs themselves contain **no agent-specific tool names** — they describe capabilities ("read the file", "schedule a wake-up") that map to whatever primitives your agent harness provides.
+
+---
+
+## Layout
+
 ```
-claude-dev-methodology-dumb/
-├── README.md                                 you are here
-├── index.md                                  AI memory entry point
-├── pr-loop.md                                PR review loop (5-min cadence, 24h max)
-├── plan-to-issues.md                         plan migration recipe
-├── issue-schema.md                           canonical body shape (MUST-FOLLOW)
-├── label-taxonomy.md                         label families + cascade install
-├── cold-start.md                             pick up an issue from zero context
-├── parallel-validation.md                    3-agent validation pattern
-├── commits.md                                conventional commits + reviewer discovery
-├── plan-deprecation.md                       post-migration plan minimization
-├── audit-vs-execute.md                       findings ≠ approval
-├── local-config.md                           per-project config schema
+github-dev-methodology/
+├── AGENTS.md                       entry-point pointer (read first)
+├── index.md                        topic index + read order
+├── pr-loop.md                      PR review loop
+├── plan-to-issues.md               plan migration recipe
+├── issue-lifecycle.md              single-issue / single-PR flow
+├── issue-schema.md                 canonical body shape
+├── label-taxonomy.md               locked label families + native Type mapping
+├── cold-start.md                   pick up an issue with zero context
+├── agents-orchestration.md         orchestrator + subagent pattern
+├── parallel-validation.md          3-agent post-migration audit
+├── commits.md                      conventional commits + reviewer request
+├── plan-deprecation.md             post-migration plan minimization
+├── audit-vs-execute.md             findings ≠ approval
+├── local-config.md                 per-project config schema
 ├── templates/
-│   ├── labels/default-taxonomy.yaml          locked label families
-│   └── ctxr-dev.config.local.md              per-project config template
-└── scripts/
-    ├── package.json                          @ctxr-dev/methodology-validators
-    ├── validate-tree.mjs                     parent-chain walk
-    ├── validate-issue-schema.mjs             body shape check
-    ├── validate-labels.mjs                   label consistency cross-repo
-    └── diff-plan.mjs                         plan-vs-issues diff
+│   ├── config.local.md             per-project config template
+│   └── labels/default-taxonomy.yaml  locked label families
+└── scripts/                        4 Node validators (Node ≥ 20)
 ```
 
-## Author
+---
 
-Dmitri Meshin <dmitri.meshin@gmail.com> — distilled from real ctxr-dev project work.
+<details>
+<summary><strong>Legacy installs (from the old <code>.claude/memory/</code> layout)</strong></summary>
 
-## License
+<br/>
 
-MIT.
+Existing projects that installed the previous Claude-only layout can migrate manually. Use plain `mv` (not `git mv`) — the old paths were gitignored, so git doesn't know about them:
+
+```sh
+mkdir -p .agents/ctxr-dev
+mv .claude/memory/ctxr-dev .agents/ctxr-dev/github-dev-methodology
+mv .claude/memory/ctxr-dev.config.local.md .agents/ctxr-dev/github-dev-methodology.config.local.md
+```
+
+Then rewire `AGENTS.md` per step 3 of the install, update `.gitignore` per step 2, and replace the old single-project table in your config with the new `## Active` + `## Project: <slug>` layout (see [`templates/config.local.md`](templates/config.local.md)).
+
+</details>
+
+---
+
+<div align="center">
+
+Made by <a href="mailto:dmitri.meshin@gmail.com"><strong>Dmitri Meshin</strong></a>, distilled from real <a href="https://github.com/ctxr-dev">ctxr-dev</a> project work.
+
+<sub>MIT licensed — see <a href="LICENSE">LICENSE</a>.</sub>
+
+</div>

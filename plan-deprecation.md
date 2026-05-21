@@ -26,7 +26,7 @@ Concrete example:
 This plan was migrated to a wired native sub-issue tree on https://github.com/orgs/ctxr-dev/projects/1. The full pre-migration content is recoverable from git history (`git log --all --source -- plans/v2-bundle.md` to find the pre-migration commit). Future planning lives in the issue tree; this file is kept only as a redirect for inbound links.
 ```
 
-## When the AI minimizes the plan file
+## When the agent minimizes the plan file
 
 This is the **final step of the plan-to-issues migration recipe** (see [`plan-to-issues.md`](plan-to-issues.md), Step 11). It runs AFTER:
 
@@ -37,7 +37,7 @@ This is the **final step of the plan-to-issues migration recipe** (see [`plan-to
 - The 3 parallel Plan agents have audited (TOUCHED-only).
 - Highest-leverage polish has been applied.
 
-THEN: the AI rewrites the plan file in-place to the minimal skeleton + commits as `docs: migrate plan to <epic-link>`.
+THEN: the agent rewrites the plan file in-place to the minimal skeleton + commits as `docs: migrate plan to <epic-link>`.
 
 ## Why automatic, not manual
 
@@ -73,4 +73,4 @@ The methodology recommends MINIMIZE (replace content) over DELETE (remove file) 
 - The minimized file is searchable: `grep -r "Migrated to" plans/` finds every retired plan.
 - Cost is 5 lines per retired plan; trivial.
 
-If a project explicitly prefers full deletion: override in `.claude/memory/ctxr-dev.config.local.md` with `plan_post_migration: delete`.
+If a project explicitly prefers full deletion: override in `.agents/ctxr-dev/github-dev-methodology.config.local.md` with `plan_post_migration: delete`.

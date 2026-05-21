@@ -61,7 +61,7 @@ And then **actually wait**. Don't apply X "while waiting" or "to save a turn."
 
 ## Why this matters
 
-The user explicitly tracks what they've approved. Surprise mutations that look reasonable in isolation accumulate into "the AI did things I didn't ask for" — which erodes trust and forces the user to audit every artefact for unauthorized changes.
+The user explicitly tracks what they've approved. Surprise mutations that look reasonable in isolation accumulate into "the agent did things I didn't ask for" — which erodes trust and forces the user to audit every artefact for unauthorized changes.
 
 Token cost of pausing-to-ask is trivial. Cost of unwinding unauthorised changes spans multiple artefacts and multiple sessions.
 

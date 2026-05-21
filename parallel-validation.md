@@ -116,6 +116,6 @@ Then report to the user with a summary: "X new issues, Y body updates, Z sub-iss
 
 ## Token-economy notes
 
-- The agents read-only (no `Write` / `Edit`). All findings come back as text reports for the orchestrator (you) to act on.
+- The agents are read-only (no file mutations). All findings come back as text reports for the orchestrator (you) to act on.
 - Pass each agent ONLY the touched-issue list, not the full project tree.
 - Each agent's report capped at ~600-700 words. Aggregate ≤ 2k words total. Cheap.

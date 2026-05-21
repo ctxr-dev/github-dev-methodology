@@ -113,7 +113,7 @@ gh auth refresh -h github.com -s read:org,admin:org,project,workflow,admin:repo_
 Scope breakdown:
 - `repo` — full read/write on private repos (issues, labels, code, branches).
 - `read:org` — list org members and resources (covered by `admin:org`).
-- `admin:org` — REQUIRED to call `createIssueType` (only org admins can add new native Issue Types). If the user is not an org admin, omit this scope; the AI must NOT auto-create types and instead present the "use existing types only" branch of the mapping question.
+- `admin:org` — REQUIRED to call `createIssueType` (only org admins can add new native Issue Types). If the user is not an org admin, omit this scope; the agent must NOT auto-create types and instead present the "use existing types only" branch of the mapping question.
 - `project` — read + write GitHub Projects v2 (item-add, field-update).
 - `workflow` — touch `.github/workflows/*` if the bootstrap installs CI gates.
 - `admin:repo_hook` and `admin:org_hook` — manage repo + org webhooks if the bootstrap installs any (rarely needed; cheap to include).
@@ -134,30 +134,30 @@ returned array is the only source of truth for what's available; never
 assume.
 
 If the call returns `[]` (the feature is disabled for this org), record
-that in `ctxr-dev.config.local.md` and skip the type-setting step
+that in `github-dev-methodology.config.local.md` and skip the type-setting step
 entirely — the `type:*` label alone is the type signal in that case.
 
 For each non-empty result, capture `node_id` (looks like
 `IT_kwDOXXXXXXXXXX`) plus `name`, `color`, `description`. Record in
-`<project-root>/.claude/memory/ctxr-dev.config.local.md` under a section
+`<project-root>/.agents/ctxr-dev/github-dev-methodology.config.local.md` under a section
 titled `## GitHub native Issue Types (org-level, <ORG>)` with a table.
 
 ### Mapping `type:*` → native Issue Type (ALWAYS ASK USER)
 
 The mapping from ctxr-dev's 7 `type:*` label suffixes to the org's
-native Issue Types is project-specific. **The AI MUST NOT autopilot
-this mapping.** Always run discovery first, then present options to the
-user via `AskUserQuestion` and let them choose. The AI's role is to:
+native Issue Types is project-specific. **The agent MUST NOT autopilot
+this mapping.** Always run discovery first, then ask the user directly
+which mapping they want for each `type:*` value. The agent's role is to:
 1. Show what's currently configured (discovered types).
 2. List the realistic options (existing types, auto-create, label-only).
 3. Ask which mapping the user wants for each `type:*`.
-4. Record the chosen mapping in `ctxr-dev.config.local.md`.
+4. Record the chosen mapping in `github-dev-methodology.config.local.md`.
 5. Apply the mapping consistently going forward (and to any existing
    issues already created under a previous mapping).
 
 ### Available approaches the user can choose from
 
-When the AI asks the user how to map `type:*` values, present these
+When the agent asks the user how to map `type:*` values, present these
 options. Each `type:*` value can pick a different approach.
 
 **A. Map to an existing native type.** Use the org's currently-configured
@@ -167,10 +167,10 @@ type renders as a chip in the GitHub UI and supports project-board
 grouping.
 
 **B. Auto-create a new native type at the org level.** If the user has
-admin permissions and wants the precise type to exist, the AI offers
+admin permissions and wants the precise type to exist, the agent offers
 to create it via the GraphQL `createIssueType` mutation. Example:
-the user wants `Epic` as a distinct type → AI creates it once, records
-its node_id, then maps `type:epic` to it. Always confirm with the
+the user wants `Epic` as a distinct type → the agent creates it once,
+records its node_id, then maps `type:epic` to it. Always confirm with the
 user before mutating the org schema.
 
 **C. Use the ctxr-dev `type:*` label only (no native type).** Skip
@@ -186,7 +186,7 @@ labels and adds complexity; only use if the user explicitly asks.
 
 ### Auto-creating a native type (option B)
 
-If the user picks "auto-create" for one or more `type:*` values, the AI
+If the user picks "auto-create" for one or more `type:*` values, the agent
 calls the GraphQL `createIssueType` mutation per type. Requires
 `admin:org` scope (see auth section above). Sample mutation:
 
@@ -211,16 +211,16 @@ mutation($oid:ID!) {
 `GRAY`, `BLUE`, `GREEN`, `YELLOW`, `ORANGE`, `RED`, `PINK`, `PURPLE`.
 
 The mutation returns the new type's `id` (looks like `IT_kwDOXXXXXXXXXX`).
-Capture it immediately and write to `ctxr-dev.config.local.md`.
+Capture it immediately and write to `github-dev-methodology.config.local.md`.
 
 If the org admin auto-creates types AFTER some issues already exist
 under a different mapping (e.g. `type:epic` was collapsed to `Feature`
-because there was no Epic type at bootstrap time), the AI runs a remap
+because there was no Epic type at bootstrap time), the agent runs a remap
 pass: for every existing issue carrying the affected `type:*` label,
 call `updateIssueIssueType` to switch it to the new native type. Track
-the remap event in `ctxr-dev.config.local.md` history for auditability.
+the remap event in `github-dev-methodology.config.local.md` history for auditability.
 
-### The question the AI presents
+### The question the agent presents
 
 Once discovery is done, present to the user something like:
 
@@ -237,7 +237,7 @@ Once discovery is done, present to the user something like:
 > enhancement→Feature, bug→Bug, refactor→Task, docs→Task, chore→Task)
 > and you adjust? Or do you want to specify each one explicitly?"
 
-Record the user's answers in the project's `ctxr-dev.config.local.md`
+Record the user's answers in the project's `github-dev-methodology.config.local.md`
 under `## ctxr-dev type:* → native Issue Type mapping` with one row
 per `type:*` value and a comment indicating the approach used (A/B/C/D).
 
@@ -249,12 +249,12 @@ If the org adds a new native type, or the user changes their mind:
 3. ASK the user which `type:*` values should remap.
 4. For each remap: run `updateIssueIssueType` for every existing issue
    carrying the relevant `type:*` label.
-5. Update `ctxr-dev.config.local.md` history with the change date.
+5. Update `github-dev-methodology.config.local.md` history with the change date.
 
-### Default suggestions (for AI to PROPOSE, never auto-apply)
+### Default suggestions (for the agent to PROPOSE, never auto-apply)
 
 If the org has exactly the standard 3 types (Task/Bug/Feature) and no
-custom additions, the AI may PROPOSE this baseline as the starting
+custom additions, the agent may PROPOSE this baseline as the starting
 point for user adjustment, but must still ASK before applying:
 
 | ctxr-dev `type:` | Suggested native (proposal only) |
@@ -267,7 +267,7 @@ point for user adjustment, but must still ASK before applying:
 | `docs` | `Task` |
 | `chore` | `Task` |
 
-The AI should also offer to auto-create custom types if the user wants
+The agent should also offer to auto-create custom types if the user wants
 finer granularity (e.g. `Epic`, `Documentation`, `Refactor`, `Chore`).
 
 ### Updating an existing project's mapping
@@ -275,12 +275,12 @@ finer granularity (e.g. `Epic`, `Documentation`, `Refactor`, `Chore`).
 If the org admin adds a new native type AFTER the project bootstrapped
 (e.g. they later add `Epic`):
 1. Re-discover via `gh api orgs/<ORG>/issue-types`.
-2. Diff against the recorded mapping in `ctxr-dev.config.local.md`.
+2. Diff against the recorded mapping in `github-dev-methodology.config.local.md`.
 3. ASK the user whether to remap any existing ctxr-dev `type:*` to the
    new native type.
 4. If yes, run a one-shot `updateIssueIssueType` mutation for every
    existing issue carrying the relevant `type:*` label. Track in
-   `ctxr-dev.config.local.md` history that the remap happened on
+   `github-dev-methodology.config.local.md` history that the remap happened on
    `<date>`.
 
 ### Setting the native Type on an issue

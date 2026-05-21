@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// validate-labels.mjs <OWNER> [--repos repo1,repo2] [--fix]
+// validate-labels.mjs <OWNER> [--repos repo1,repo2] [--project <slug>] [--fix]
 //
 // Walks the canonical label set from templates/labels/default-taxonomy.yaml.
 // For each repo, verifies every locked label exists with the right color.
 // `--fix` cascade-installs missing/drifted labels via gh label create --force.
+// `--project <slug>` overrides the active project in the local config.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -18,21 +19,23 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const OWNER = process.argv[2];
 if (!OWNER) {
-  console.error("Usage: validate-labels.mjs <owner> [--repos repo1,repo2] [--fix]");
+  console.error("Usage: validate-labels.mjs <owner> [--repos repo1,repo2] [--project <slug>] [--fix]");
   process.exit(1);
 }
 const fix = process.argv.includes("--fix");
 const reposArgIdx = process.argv.indexOf("--repos");
+const projectArgIdx = process.argv.indexOf("--project");
+const projectSlug = projectArgIdx >= 0 ? process.argv[projectArgIdx + 1] : null;
 let repos;
 if (reposArgIdx >= 0) {
   repos = process.argv[reposArgIdx + 1].split(",").map((s) => s.trim());
 } else {
-  // Read from local config: primary_repo + sibling_repos
-  const cfg = readLocalConfig();
+  // Read from local config: primary_repo + sibling_repos for the active (or selected) project.
+  const cfg = readLocalConfig({ project: projectSlug });
   repos = [cfg.primary_repo, ...(cfg.sibling_repos ?? "").split(",").map((s) => s.trim())].filter(Boolean);
 }
 if (!repos.length) {
-  console.error("No repos configured. Pass --repos repo1,repo2 OR populate primary_repo / sibling_repos in ctxr-dev.config.local.md.");
+  console.error("No repos configured. Pass --repos repo1,repo2 OR populate primary_repo / sibling_repos under a `## Project: <slug>` section in github-dev-methodology.config.local.md (and point `active_project` at it).");
   process.exit(1);
 }
 
