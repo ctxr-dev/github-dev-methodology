@@ -106,6 +106,36 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    fi
 >    ```
 >
+> 5b. **Register the `mcp-github` MCP server (recommended).** The methodology drives GitHub via the sibling [`mcp-github`](https://github.com/ctxr-dev/mcp-github) MCP server (issue / PR / project / label / org / workflow tools — see its README for the catalogue). The proper `mcp-github-install` CLI is still in flight; for now, register the server by hand in `./.mcp.json` (and `./.agents/mcp.json` if you maintain a vendor-neutral copy).
+>
+>    > [!IMPORTANT]
+>    > **Every path you write into these MCP-config files MUST be relative to the project root**, not absolute. The config files are checked into the project and shared across machines and contributors; an absolute path like `/Users/alice/...` will silently break on every other machine and inside CI containers. MCP clients resolve `command` working-directory from the project root they were launched in, so `./mcp-github/dist/server.mjs` (or `npx -y @ctxr/mcp-github` once it's published) is the right form.
+>
+>    Minimal `mcpServers.github` entry — merge into the existing `mcpServers` map, do not overwrite other servers:
+>    ```json
+>    {
+>      "mcpServers": {
+>        "github": {
+>          "command": "node",
+>          "args": ["./mcp-github/dist/server.mjs"],
+>          "env": {
+>            "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+>            "MCP_GITHUB_DENY_TOOLS": "gh.pr_merge"
+>          }
+>        }
+>      }
+>    }
+>    ```
+>
+>    Notes:
+>    - **Use a relative `args[0]`.** No absolute paths. No `~`. Re-read the IMPORTANT block above if you're tempted.
+>    - `GITHUB_TOKEN` is read from the launching shell. Required scopes per the active feature preset — see the scopes table in `index.md` (union of `repo,workflow,project,read:org`; add `admin:org` only if you opt into native Issue Type auto-create).
+>    - `MCP_GITHUB_DENY_TOOLS=gh.pr_merge` keeps the agent off the merge gate at the server level (defence in depth — `pr-loop.md` and `audit-vs-execute.md` already forbid it at the methodology level).
+>    - Once `@ctxr/mcp-github` is published to npm and the formal installer (`mcp-github-install`) lands, this step will collapse to a single `npx` command. Until then, the file you ship to teammates points at `./mcp-github/dist/server.mjs`, which works if every developer also clones `mcp-github` alongside this project — OR you can switch the entry to `"command": "npx", "args": ["-y", "github:ctxr-dev/mcp-github"]` to fetch it from GitHub on demand. **Either way, no absolute paths.**
+>    - Restart your MCP client (Claude Code, Cursor, etc.) after editing the config so the new server is picked up.
+>
+>    Skip this step if you have a different GitHub MCP server already registered in the project's `mcpServers` map.
+>
 > 6. **Pick a feature preset.** Ask the user once:
 >    > "Which features do you need?"
 >    > - **`pr-only`** — PR loop, Copilot review, conventional commits, agents orchestration, audit-vs-execute. No issues, no project board.
