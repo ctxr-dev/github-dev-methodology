@@ -1,3 +1,10 @@
+---
+feature: audit_vs_execute
+requires:
+  features: []
+  config: []
+---
+
 # Audit vs execute — investigation findings ≠ approval
 
 When the user asks for an investigation or audit, the **deliverable is the findings**, not the execution. Findings are discussion material. Pause for explicit user "go" before mutating any artefact.

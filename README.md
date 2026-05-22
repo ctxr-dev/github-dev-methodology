@@ -50,6 +50,7 @@
 | 🧭 **Agents orchestration** | Default pattern for non-trivial work: push focused work into fresh subagents; orchestrator holds only plan + decisions + compacted history. |
 | 🔍 **Parallel validation** | After every plan migration, 3 audit agents (completeness / dep-graph / cold-start) scoped to TOUCHED issues only. |
 | 🗂️ **Plan deprecation** | Once issues exist, the original plan file is auto-minimized to title + 1-paragraph + epic link. |
+| 🎚️ **Opt-in features** | 3-tier preset (`pr-only` / `single-issue` / `full`) picked at install time. 12 individual flags you can flip later. No project board? Pick `pr-only` and the agent never touches issues, labels, or boards. |
 
 ---
 
@@ -105,7 +106,17 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    fi
 >    ```
 >
-> 6. **Bootstrap.** Read `.agents/ctxr-dev/github-dev-methodology/index.md` and follow it. If the config still contains any `<…>` placeholders (e.g. `<fill: …>`, `<one of: …>`, `<auto-discovered …>`), stop and ask the user to fill them in — at minimum the `active_project` slug plus one `## Project: <slug>` section.
+> 6. **Pick a feature preset.** Ask the user once:
+>    > "Which features do you need?"
+>    > - **`pr-only`** — PR loop, Copilot review, conventional commits, agents orchestration, audit-vs-execute. No issues, no project board.
+>    > - **`single-issue`** — `pr-only` + issue lifecycle + canonical issue schema. Still no project board.
+>    > - **`full`** — `single-issue` + plan-to-issues, parallel validation, plan deprecation, cold-start, label taxonomy + native Issue Type.
+>
+>    Write a `### Features` table under the active `## Project: <slug>` section in the config with the 12 booleans set per the chosen preset (see `local-config.md` for the per-preset matrix). The template's defaults already match `pr-only` — for `single-issue` flip `issue_schema` + `issue_lifecycle` to `true`; for `full` flip all of them to `true`.
+>
+> 7. **Fill the config.** Ask the user for every field in the active project section. For fields not used by the chosen preset (e.g. `project_url` and `sibling_repos` under `pr-only`), record `<not used: pr-only>` rather than leaving the placeholder — that way the value is unambiguous if the user later upgrades the preset.
+>
+> 8. **Bootstrap.** Read `.agents/ctxr-dev/github-dev-methodology/index.md` and follow it. Honour the active features per the index preamble: never bootstrap a recipe whose `feature` is off, and never ask the user for config values that belong only to disabled features.
 
 After install, every future session in this project picks up the methodology automatically. To update: `cd .agents/ctxr-dev/github-dev-methodology && git pull`.
 
@@ -183,7 +194,7 @@ mv .claude/memory/ctxr-dev .agents/ctxr-dev/github-dev-methodology
 mv .claude/memory/ctxr-dev.config.local.md .agents/ctxr-dev/github-dev-methodology.config.local.md
 ```
 
-Then rewire `AGENTS.md` per step 3 of the install, update `.gitignore` per step 2, and replace the old single-project table in your config with the new `## Active` + `## Project: <slug>` layout (see [`templates/config.local.md`](templates/config.local.md)).
+Then rewire `AGENTS.md` per step 3 of the install, update `.gitignore` per step 2, and replace the old single-project table in your config with the new `## Active` + `## Project: <slug>` layout (see [`templates/config.local.md`](templates/config.local.md)). **Add a `### Features` block** to each project section (the parser treats any feature not listed as `false`, so start with the `full` preset if your old install used the whole methodology). **Drop the `polling_paradigm` row** if present — it's gone; polling is always foreground.
 
 </details>
 

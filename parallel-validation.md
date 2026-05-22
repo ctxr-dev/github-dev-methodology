@@ -1,3 +1,10 @@
+---
+feature: parallel_validation
+requires:
+  features: [issue_schema, plan_to_issues]
+  config: [primary_repo]
+---
+
 # Parallel validation pattern
 
 After every plan migration to issues, spawn 3 Plan agents in parallel to audit the result. **Scope: TOUCHED issues only.** Don't re-audit untouched portions of the tree — token economy.

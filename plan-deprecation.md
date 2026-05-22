@@ -1,3 +1,10 @@
+---
+feature: plan_deprecation
+requires:
+  features: [plan_to_issues]
+  config: []
+---
+
 # Plan deprecation (post-migration)
 
 After a plan is migrated to GitHub issues, the plan markdown file becomes obsolete as a source of truth. Issues are now canonical. The plan file gets minimized so future readers don't accidentally consult stale content.

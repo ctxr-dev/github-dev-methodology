@@ -6,11 +6,34 @@
 //   ## Project: <slug>         -> one section per tracked project, keys nested below
 //   (further H3 subsections inside a project section are visual only; parser ignores them)
 //
-// readLocalConfig({ project }) returns the active project's flat key/value dict.
+// readLocalConfig({ project }) returns the active project's flat key/value dict, plus
+// a `_features` map of feature-flag booleans drawn from the project's `### Features` table.
 // Pass `project: "<slug>"` to override the file's `active_project` pointer.
 
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
+
+// Known feature flags. Rows in a project section whose key is one of these are parsed as booleans.
+export const FEATURE_NAMES = Object.freeze([
+  "pr_loop",
+  "copilot_review",
+  "conventional_commits",
+  "agents_orchestration",
+  "audit_vs_execute",
+  "issue_schema",
+  "issue_lifecycle",
+  "label_taxonomy",
+  "plan_to_issues",
+  "parallel_validation",
+  "plan_deprecation",
+  "cold_start",
+]);
+
+function parseBool(s) {
+  if (s == null) return false;
+  const v = String(s).trim().toLowerCase();
+  return v === "true" || v === "yes" || v === "on" || v === "1";
+}
 
 export function findProjectRoot(start = process.cwd()) {
   let cur = resolve(start);
@@ -83,7 +106,28 @@ export function readLocalConfig(opts = {}) {
 
   const projectSection = sections[`Project: ${slug}`];
   if (!projectSection) return { _active_project: slug, _missing_project: true };
-  return { ...projectSection, _active_project: slug };
+
+  // Split feature flags out of the flat dict into _features.
+  const features = {};
+  const rest = {};
+  for (const [k, v] of Object.entries(projectSection)) {
+    if (FEATURE_NAMES.includes(k)) {
+      features[k] = parseBool(v);
+    } else {
+      rest[k] = v;
+    }
+  }
+  // Defaults: any feature not explicitly listed is treated as off.
+  for (const name of FEATURE_NAMES) {
+    if (!(name in features)) features[name] = false;
+  }
+  return { ...rest, _active_project: slug, _features: features };
+}
+
+export function isFeatureEnabled(config, name) {
+  if (!config || typeof config !== "object") return false;
+  if (!config._features) return false;
+  return config._features[name] === true;
 }
 
 export function parseProjectUrl(url) {

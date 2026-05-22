@@ -2,6 +2,8 @@
 
 The methodology stays project-agnostic. Per-project values live in a gitignored markdown file at `.agents/ctxr-dev/github-dev-methodology.config.local.md`. One file can track **one or many GitHub Projects** — useful when a single workspace participates in several boards.
 
+Every project section also carries a `### Features` table that determines which methodology recipes the agent applies. Most projects don't need every feature, so the methodology is **opt-in per feature**, with three install presets (`pr-only` / `single-issue` / `full`) for the common shapes.
+
 ## Schema
 
 ```markdown
@@ -14,6 +16,23 @@ The methodology stays project-agnostic. Per-project values live in a gitignored 
 | `active_project` | <slug-of-a-Project-section-below> |
 
 ## Project: <slug-1>
+
+### Features
+
+| Feature | Enabled |
+|---|---|
+| `pr_loop` | true |
+| `copilot_review` | true |
+| `conventional_commits` | true |
+| `agents_orchestration` | true |
+| `audit_vs_execute` | true |
+| `issue_schema` | false |
+| `issue_lifecycle` | false |
+| `label_taxonomy` | false |
+| `plan_to_issues` | false |
+| `parallel_validation` | false |
+| `plan_deprecation` | false |
+| `cold_start` | false |
 
 ### Project values
 
@@ -38,7 +57,6 @@ The methodology stays project-agnostic. Per-project values live in a gitignored 
 | Key | Value |
 |---|---|
 | `default_dev_loop_mode` | autonomous \| interactive \| handoff |
-| `polling_paradigm` | wakeup \| background |
 
 ### Plan-deprecation policy
 
@@ -52,6 +70,58 @@ The methodology stays project-agnostic. Per-project values live in a gitignored 
 ```
 
 `## Active` is parsed for the `active_project` key; that's the project used when no `--project` override is passed. Slugs are user-chosen labels (`my-app`, `web`, `infra`) — keep them short and shell-safe.
+
+> **Polling is always foreground.** There is no `polling_paradigm` flag any more (formerly `wakeup | background`); both options are gone. See [`pr-loop.md`](pr-loop.md)'s "Polling cadence" section.
+
+## The 12 feature flags
+
+Each row in the `### Features` table maps to one (and only one) topic doc. Flags default to `false` if the row is missing.
+
+| Flag | Gates |
+|---|---|
+| `pr_loop` | `pr-loop.md` (the canonical PR review loop) |
+| `copilot_review` | the Copilot-discovery + GraphQL `requestReviews` sections inside `commits.md` and `pr-loop.md`. Off → fall back to plain `gh pr edit --add-reviewer <login>`. |
+| `conventional_commits` | `commits.md` (commit message format spec) |
+| `agents_orchestration` | `agents-orchestration.md` (orchestrator + fresh-subagent pattern; universal) |
+| `audit_vs_execute` | `audit-vs-execute.md` (findings ≠ approval; PR merge is human-gated). **Disabling this removes the merge gate and bulk-edit safeguards — not recommended.** |
+| `issue_schema` | `issue-schema.md` (canonical issue body shape + validator contract) |
+| `issue_lifecycle` | `issue-lifecycle.md` (single-issue / single-PR flow) |
+| `label_taxonomy` | `label-taxonomy.md` (locked label families + native Issue Type mapping) |
+| `plan_to_issues` | `plan-to-issues.md` (markdown plan → wired sub-issue tree) |
+| `parallel_validation` | `parallel-validation.md` (3-agent post-migration audit) |
+| `plan_deprecation` | `plan-deprecation.md` (auto-minimize plan files post-migration) |
+| `cold_start` | `cold-start.md` (4-step warm-up reading an existing issue + board state) |
+
+## The 3 install presets
+
+The install prompt asks once: "Which preset?" Pick the closest one; flip individual flags later.
+
+| Preset | What's on | When to pick |
+|---|---|---|
+| `pr-only` | `pr_loop`, `copilot_review`, `conventional_commits`, `agents_orchestration`, `audit_vs_execute` | You just want the PR loop + Copilot review. No issues, no project board. Skips: every issue/project/label/migration recipe. |
+| `single-issue` | `pr-only` + `issue_schema`, `issue_lifecycle` | You file issues per fix but don't run a project board. Adds the canonical body shape + single-issue/single-PR flow. |
+| `full` | all 12 | You run a GitHub Project with the full methodology: sub-issue trees, label taxonomy, plan migrations, post-migration validation, cold-start, plan deprecation. |
+
+Default values for fields not used by your preset can be left as `<not used: pr-only>` (or your preset's name). When you upgrade the preset later, fill them in.
+
+## Frontmatter contract
+
+Every feature-gated topic doc starts with a YAML frontmatter block:
+
+```yaml
+---
+feature: <flag-name>
+requires:
+  features: [<other_flag>, ...]   # other flags that must ALSO be on
+  config:   [<config_key>, ...]   # config keys whose values must be non-empty
+---
+```
+
+Files with no frontmatter (`README.md`, `AGENTS.md`, `index.md`, `local-config.md`) are always-on entry points and schema docs.
+
+**Agent rule (see [`index.md`](index.md) preamble for the full text):** before reading any topic file, parse its frontmatter. Skip the file entirely if its `feature` is off, any `requires.features` entry is off, or any `requires.config` key is empty in the active project. Inline `> **Skip this section if <flag> is off** ...` notes inside surviving files take precedence within those files.
+
+Precedence: **whole-file gate** (frontmatter) > **inline section gate** (`> **Skip ...**` callout) > recipe step.
 
 ## Where the file lives
 
@@ -86,8 +156,8 @@ Three ways, in precedence order:
 At session start (or before any methodology recipe runs), the agent:
 
 1. Checks if `<project-root>/.agents/ctxr-dev/github-dev-methodology.config.local.md` exists.
-2. If yes: reads the file, resolves which project section to use (per the precedence above), and holds the project's keys for the session.
-3. If no: creates it from `templates/config.local.md` and **asks the user** to fill in at least the `active_project` pointer plus one `## Project: <slug>` section before proceeding with any methodology recipe.
+2. If yes: reads the file, resolves which project section to use (per the precedence above), parses the `### Features` table into a flag map, and holds the project's keys + feature map for the session.
+3. If no: creates it from `templates/config.local.md` and **asks the user** to (a) pick a preset (`pr-only` / `single-issue` / `full`), (b) fill in at least one `## Project: <slug>` section with the `active_project` pointer.
 
 ## Why markdown not JSON
 
@@ -120,9 +190,9 @@ The next session inherits the discovery.
 
 ## Adding another project
 
-1. Duplicate the entire `## Project: <slug>` section.
+1. Duplicate the entire `## Project: <slug>` section (including the `### Features` H3).
 2. Rename the slug (`my-app` → `other-app`).
-3. Fill in the values.
+3. Fill in the values; adjust the feature flags for the new project's needs.
 4. Optionally switch `active_project` to the new slug.
 
 ## Why per-project, not org-wide
@@ -131,5 +201,6 @@ Different projects in the same org might have different conventions:
 
 - One project uses Copilot reviews; another uses a named human.
 - One project wants a 5-min poll; another wants 15-min.
+- One project runs `pr-only`; another runs `full` with a project board.
 
-Per-project sections let each board override defaults without coordinating across the workspace.
+Per-project sections let each board override defaults — including the feature set — without coordinating across the workspace.

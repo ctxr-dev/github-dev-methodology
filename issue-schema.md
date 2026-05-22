@@ -1,3 +1,10 @@
+---
+feature: issue_schema
+requires:
+  features: []
+  config: []
+---
+
 # Canonical issue body schema (MUST-FOLLOW)
 
 Every issue created via the methodology MUST follow this exact body shape. The validator at `scripts/validate-issue-schema.mjs` hard-fails on missing sections.

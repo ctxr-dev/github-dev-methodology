@@ -1,3 +1,10 @@
+---
+feature: pr_loop
+requires:
+  features: []
+  config: [primary_repo]
+---
+
 # PR review loop
 
 The canonical pattern for filing, iterating, and merging PRs in any project that imports this methodology.
@@ -35,14 +42,28 @@ Until predicate (1) AND (2) AND (3) all hold, the PR is **NOT ready for merge** 
 
 - **Check every 5 minutes** while the loop is active.
 - **Maximum 24 hours** without a state change before halt-and-ask the user. Idle reviewer time is normal; don't give up early.
-- "No new comments this cycle" is NOT a reason to stop — schedule the next wake-up.
-- Schedule a wake-up in ~5 minutes using whatever scheduling primitive your agent harness exposes (a wake-up tool, a cron entry, or a plain `sleep 300` inside the loop). The wake-up resumes the loop from "check exit predicate".
+- "No new comments this cycle" is NOT a reason to stop or to return control to the user — keep polling.
+- **Polling is foreground and blocking.** The agent MUST keep the loop in the foreground for the entire run. Use a blocking `sleep 300` (or your harness's foreground-blocking equivalent) inside a `while true` loop. The only exits are: (a) exit predicate holds, (b) 24h elapsed, (c) user interrupts the run.
+
+### Things that look like a valid pause but are NOT
+
+These are common false exits. None of them is permitted — every one of them leaves the user nudging the agent to keep going, which defeats the loop:
+
+- ❌ **"I'll check back in 5 minutes."** Returning control to the user between cycles. Not allowed; the loop must block in-process.
+- ❌ **Scheduling a wake-up / callback / cron and returning.** The harness's async wake-up primitives are NOT the polling mechanism. Use blocking `sleep` inside the loop.
+- ❌ **Marking the PR or task as "done" while waiting for review.** The loop is not done until the exit predicate (or 24h, or user interrupt) fires.
+- ❌ **Asking the user to confirm CI status, reviewer state, or thread resolution.** The agent reads that itself each cycle.
+- ❌ **Treating a single no-change cycle as a halt condition.** Silence is normal; keep going.
+
+If a single cycle reports no progress, the agent re-sleeps and re-polls. It does NOT report back to the user and wait for a prompt.
 
 ## Reviewer auto-discovery (run once per project, cache in local config)
 
+> **Skip the Copilot branch (step 1) if `copilot_review` is off in the active project.** In that case start from step 2 and go straight to a human reviewer from config or "ask".
+
 Order of precedence:
 
-1. **Copilot is available?** Check via `gh api graphql -f query='{ repository(owner: "<OWNER>", name: "<REPO>") { pullRequest(first: 1) { nodes { reviews(first: 5) { nodes { author { __typename login } } } } } } }'`. Filter for `__typename == "Bot" && login == "copilot-pull-request-reviewer"`. If found, capture the bot node id (see `commits.md` for the extraction snippet).
+1. **Copilot is available?** *(only if `copilot_review` is on)* Check via `gh api graphql -f query='{ repository(owner: "<OWNER>", name: "<REPO>") { pullRequest(first: 1) { nodes { reviews(first: 5) { nodes { author { __typename login } } } } } } }'`. Filter for `__typename == "Bot" && login == "copilot-pull-request-reviewer"`. If found, capture the bot node id (see `commits.md` for the extraction snippet).
 2. **Configured `default_reviewer` in `.agents/ctxr-dev/github-dev-methodology.config.local.md`?** Use it.
 3. **Ask the user** which reviewer(s) to use. **Persist the answer** to `.agents/ctxr-dev/github-dev-methodology.config.local.md` so future sessions don't re-ask.
 
@@ -84,13 +105,15 @@ PR_ID=$(gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository
 gh api graphql -f query='mutation($pid:ID!,$bots:[ID!]!){requestReviews(input:{pullRequestId:$pid,botIds:$bots,union:true}){pullRequest{reviewRequests(first:10){nodes{requestedReviewer{__typename ... on Bot{login} ... on User{login}}}}}}}' \
   -f pid="$PR_ID" -f bots="$COPILOT_ID"
 
-# 5. Poll every 5 min until exit predicate holds:
+# 5. Poll every 5 min until exit predicate holds.
+# Foreground polling — DO NOT replace the sleep with a wake-up tool or callback that
+# returns control to the user. The loop blocks in-process until exit predicate / 24h / interrupt.
 while true; do
   STATE=$(gh pr view $PR_NUM --repo <OWNER>/<REPO> \
     --json reviewDecision,reviews,reviewThreads,statusCheckRollup,mergeable)
   if echo "$STATE" | jq -e '<exit-predicate>' > /dev/null; then break; fi
-  # else: address comments, push fix, resolve threads (see below), reschedule
-  sleep 300  # or whatever scheduling primitive your agent harness exposes
+  # else: address comments, push fix, resolve threads (see below), then re-sleep
+  sleep 300
 done
 ```
 
@@ -131,6 +154,8 @@ Stop the loop and report to the user when:
 - 24 hours elapsed since the loop started → "stalled, no progress, please advise".
 - User explicitly says stop / changes course → obey.
 - Branch protection blocks the merge despite the predicate holding → escalate; this means the rule set is stricter than the methodology assumed.
+
+**Never** return control to the user just because a single cycle reported no change. That is not a halt condition. See "Things that look like a valid pause but are NOT" above.
 
 ## Guardrails
 

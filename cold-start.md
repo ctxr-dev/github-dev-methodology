@@ -1,3 +1,10 @@
+---
+feature: cold_start
+requires:
+  features: [issue_schema]
+  config: [primary_repo, project_url]
+---
+
 # Cold-start workflow
 
 How to pick up an issue with zero prior context and start executing within minutes.

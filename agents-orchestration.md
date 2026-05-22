@@ -1,3 +1,10 @@
+---
+feature: agents_orchestration
+requires:
+  features: []
+  config: []
+---
+
 # Agents orchestration
 
 By default, push focused work into fresh subagents. The orchestrator holds the plan, the decisions, and a compacted round-history — never raw findings, raw diffs, or raw tool output. Subagents work on one bounded unit, return a capped report, and are discarded. Findings flow up; the orchestrator collapses each report into 1-3 lines on the plan file and moves on.

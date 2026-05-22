@@ -1,3 +1,10 @@
+---
+feature: plan_to_issues
+requires:
+  features: [issue_schema, label_taxonomy]
+  config: [project_url, org, primary_repo]
+---
+
 # Plan → Issues migration recipe
 
 The canonical 10-step recipe for taking a markdown plan file and migrating its content into a wired native sub-issue tree on a GitHub Project.

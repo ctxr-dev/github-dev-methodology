@@ -1,3 +1,10 @@
+---
+feature: label_taxonomy
+requires:
+  features: []
+  config: [org]
+---
+
 # Label taxonomy
 
 Locked label families propagate across every repo in the project. Project-extensible families allow per-project specialization.

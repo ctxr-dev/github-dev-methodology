@@ -1,3 +1,10 @@
+---
+feature: conventional_commits
+requires:
+  features: []
+  config: []
+---
+
 # Conventional commits + reviewer-request mechanics
 
 ## Conventional Commits 1.0 (MUST)
@@ -32,6 +39,8 @@ Closes: ctxr-dev/agent-staff-engineer#52
 ```
 
 ## Reviewer auto-discovery + request
+
+> **Skip this entire section if `copilot_review` is off in the active project.** The methodology then falls back to plain `gh pr edit --add-reviewer <login>` against the human named in `default_reviewer`, with no auto-discovery and no GraphQL `requestReviews` mutation.
 
 The PR loop ([`pr-loop.md`](pr-loop.md)) requires triggering a code review after every push. The mechanism depends on the reviewer.
 

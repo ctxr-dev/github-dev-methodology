@@ -1,3 +1,10 @@
+---
+feature: issue_lifecycle
+requires:
+  features: [issue_schema]
+  config: [primary_repo]
+---
+
 # Issue lifecycle for single-fix work
 
 The canonical six-step contract for non-trivial fixes and small features. Applies to any change that is too small for the [`plan-to-issues.md`](plan-to-issues.md) sub-issue tree treatment but still warrants a durable issue record.
