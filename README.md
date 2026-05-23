@@ -139,8 +139,9 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    <summary>Alternative install methods</summary>
 >
 >    - **From npm (once published):** when `@ctxr/mcp-github` is on npm, switch `args` to `["-y", "@ctxr/mcp-github"]`. Same shape, faster cold start (no build at runtime).
->    - **Clone and build (offline, fastest start):** clone the repo once and point `command: node` at the built server with a relative path (never absolute):
+>    - **Clone and build (offline, fastest start):** clone the repo once into an ignored directory and point `command: node` at the built server with a relative path (never absolute). The clone is a local build artifact, not project source, so add it to `.gitignore` first:
 >      ```sh
+>      grep -qxF '.tools/' .gitignore 2>/dev/null || printf '%s\n' '.tools/' >> .gitignore
 >      git clone https://github.com/ctxr-dev/mcp-github .tools/mcp-github
 >      ( cd .tools/mcp-github && npm ci && npm run build )
 >      ```
