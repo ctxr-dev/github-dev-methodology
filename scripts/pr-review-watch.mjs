@@ -36,7 +36,10 @@
 //   --reviewer <login>  repeatable; at least one required. Alias `copilot` expands to
 //                       `copilot-pull-request-reviewer`.
 //   --required <login>  repeatable; subset of reviewers whose APPROVED gates done
-//                       (humans only; bots have no APPROVED state). Default: none.
+//                       (humans only; bots have no APPROVED state). Default: the
+//                       human reviewers (every --reviewer except the copilot bot).
+//   --no-required       gate done on NO approvals (advisory-only humans). Mutually
+//                       exclusive with --required.
 //   --wait-for <mode>   any (default) | smart | all | quorum:N. Selects which wake
 //                       transitions return control between cycles (does NOT relax done).
 //   --interval <sec>    poll cadence between cycles (default 60).
@@ -53,7 +56,7 @@ function usage(msg) {
   if (msg) console.error(`pr-review-watch.mjs: ${msg}`);
   console.error(
     "Usage: pr-review-watch.mjs --pr owner/name#N [--pr ...] --reviewer <login> [--reviewer ...]\n" +
-      "                          [--required <login> ...] [--wait-for any|smart|all|quorum:N]\n" +
+      "                          [--required <login> ...] [--no-required] [--wait-for any|smart|all|quorum:N]\n" +
       "                          [--interval 60] [--max-wait <sec>] [--once] [--require-ci] [--json]"
   );
   process.exit(1);
@@ -66,6 +69,7 @@ function parseArgs(argv) {
     prs: [],
     reviewers: [],
     required: [],
+    noRequired: false,
     waitFor: "any",
     quorum: 0,
     interval: 60,
@@ -103,6 +107,9 @@ function parseArgs(argv) {
       case "--once":
         opts.once = true;
         break;
+      case "--no-required":
+        opts.noRequired = true;
+        break;
       case "--require-ci":
         opts.requireCi = true;
         break;
@@ -125,6 +132,18 @@ function parseArgs(argv) {
   const reviewerSet = new Set(opts.reviewers);
   for (const r of opts.required) {
     if (!reviewerSet.has(r)) usage(`--required ${r} is not in the --reviewer set`);
+  }
+  if (opts.noRequired && opts.required.length > 0) {
+    usage("--no-required cannot be combined with --required");
+  }
+  // Default the required-approver set to the human reviewers (every reviewer
+  // except the copilot bot login) unless --no-required is given, matching the
+  // gh_pr_review_watch tool (omitted requiredApprovals -> the humans; an
+  // explicit empty set -> no required approvers). A human's "green" must also
+  // be APPROVED for done, which avoids an all-green / zero-approvals state that
+  // branch protection would reject. Bots have no APPROVED state, so never required.
+  if (opts.required.length === 0 && !opts.noRequired) {
+    opts.required = opts.reviewers.filter((r) => r !== COPILOT_LOGIN);
   }
   return opts;
 }
@@ -242,8 +261,11 @@ function evaluatePr(raw, opts) {
     } else if (review.state === "CHANGES_REQUESTED" || unresolvedByReviewer > 0) {
       verdict = "needs-work";
     } else {
-      const isRequired = requiredSet.has(login.toLowerCase());
-      verdict = isRequired && review.state !== "APPROVED" ? "needs-work" : "green";
+      // On head, no open thread, no requested changes: green. The verdict
+      // reflects review feedback only; a required approver who has not yet
+      // APPROVED is still green and is held back by the separate
+      // required-approval gate below (mirrors the gh_pr_review_watch tool).
+      verdict = "green";
     }
     return {
       login,
@@ -257,8 +279,13 @@ function evaluatePr(raw, opts) {
   const onHeadCount = reviewers.filter((r) => r.onHead).length;
   const actionable = reviewers.some((r) => r.verdict === "needs-work");
   const allGreen = reviewers.every((r) => r.verdict === "green");
+  // Required approvers must additionally be APPROVED for done (humans only;
+  // bots have no APPROVED state and are never defaulted into the required set).
+  const requiredApproved = reviewers
+    .filter((r) => requiredSet.has(r.login.toLowerCase()))
+    .every((r) => r.state === "APPROVED");
   const ciOk = !opts.requireCi || raw.ci === "SUCCESS";
-  const ready = allGreen && ciOk;
+  const ready = allGreen && requiredApproved && ciOk;
 
   return {
     head: raw.head,
