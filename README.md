@@ -106,18 +106,18 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    fi
 >    ```
 >
-> 5b. **Register the `mcp-github` MCP server (recommended).** The methodology drives GitHub via the sibling [`mcp-github`](https://github.com/ctxr-dev/mcp-github) MCP server (issue / PR / project / label / org / workflow tools — see its README for the catalogue). The proper `mcp-github-install` CLI is still in flight; for now, register the server by hand in `./.mcp.json` (and `./.agents/mcp.json` if you maintain a vendor-neutral copy).
+> 5b. **Install and register the `mcp-github` MCP server (recommended).** The methodology drives GitHub through the [`mcp-github`](https://github.com/ctxr-dev/mcp-github) MCP server (issue, PR, project, label, org, and workflow tools; see its README for the catalogue). The canonical install is the npx-from-GitHub entry below: npx fetches, builds, and runs the server on demand, so registering this entry **is** installing it. Add it to `./.mcp.json` (and `./.agents/mcp.json` if you keep a vendor-neutral copy), then restart your MCP client.
 >
 >    > [!IMPORTANT]
->    > **Every path you write into these MCP-config files MUST be relative to the project root**, not absolute. The config files are checked into the project and shared across machines and contributors; an absolute path like `/Users/alice/...` will silently break on every other machine and inside CI containers. MCP clients resolve `command` working-directory from the project root they were launched in, so `./mcp-github/dist/server.mjs` (or `npx -y @ctxr/mcp-github` once it's published) is the right form.
+>    > **Every path you write into these MCP-config files MUST be relative to the project root**, never absolute. These files are checked into the project and shared across machines and CI; an absolute path like `/Users/alice/...` silently breaks on every other machine and inside CI containers. The recommended npx entry carries no path at all, which sidesteps this; the relative-path rule matters for the clone-and-build alternative below.
 >
->    Minimal `mcpServers.github` entry — merge into the existing `mcpServers` map, do not overwrite other servers:
+>    Minimal `mcpServers.github` entry. Merge it into the existing `mcpServers` map; do not overwrite other servers:
 >    ```json
 >    {
 >      "mcpServers": {
 >        "github": {
->          "command": "node",
->          "args": ["./mcp-github/dist/server.mjs"],
+>          "command": "npx",
+>          "args": ["-y", "github:ctxr-dev/mcp-github"],
 >          "env": {
 >            "GITHUB_TOKEN": "${GITHUB_TOKEN}",
 >            "MCP_GITHUB_DENY_TOOLS": "gh.pr_merge"
@@ -128,13 +128,26 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    ```
 >
 >    Notes:
->    - **Use a relative `args[0]`.** No absolute paths. No `~`. Re-read the IMPORTANT block above if you're tempted.
->    - `GITHUB_TOKEN` is read from the launching shell. Required scopes per the active feature preset — see the scopes table in `index.md` (union of `repo,workflow,project,read:org`; add `admin:org` only if you opt into native Issue Type auto-create).
->    - `MCP_GITHUB_DENY_TOOLS=gh.pr_merge` keeps the agent off the merge gate at the server level (defence in depth — `pr-loop.md` and `audit-vs-execute.md` already forbid it at the methodology level).
->    - Once `@ctxr/mcp-github` is published to npm and the formal installer (`mcp-github-install`) lands, this step will collapse to a single `npx` command. Until then, the file you ship to teammates points at `./mcp-github/dist/server.mjs`, which works if every developer also clones `mcp-github` alongside this project — OR you can switch the entry to `"command": "npx", "args": ["-y", "github:ctxr-dev/mcp-github"]` to fetch it from GitHub on demand. **Either way, no absolute paths.**
->    - Restart your MCP client (Claude Code, Cursor, etc.) after editing the config so the new server is picked up.
+>    - `GITHUB_TOKEN` is read from the launching shell. Required scopes per the active feature preset: see the scopes table in `index.md` (union of `repo,workflow,project,read:org`; add `admin:org` only if you opt into native Issue Type auto-create).
+>    - `MCP_GITHUB_DENY_TOOLS=gh.pr_merge` keeps the agent off the merge gate at the server level (defence in depth; `pr-loop.md` and `audit-vs-execute.md` already forbid it at the methodology level).
+>    - **First start builds the server.** The first time your MCP client launches this entry, npx fetches `mcp-github` from GitHub and builds it (needs network plus a Node build toolchain, takes tens of seconds); later starts use the npx cache. If your client's startup times out on that first build, use the clone-and-build alternative below.
+>    - After editing the config, restart your MCP client (Claude Code, Cursor, and so on) so the new server is picked up, then confirm it is live by asking the agent to call `gh.test_connection`.
 >
->    Skip this step if you have a different GitHub MCP server already registered in the project's `mcpServers` map.
+>    Skip this step if you already have a different GitHub MCP server registered in the project's `mcpServers` map.
+>
+>    <details>
+>    <summary>Alternative install methods</summary>
+>
+>    - **From npm (once published):** when `@ctxr/mcp-github` is on npm, switch `args` to `["-y", "@ctxr/mcp-github"]`. Same shape, faster cold start (no build at runtime).
+>    - **Clone and build (offline, fastest start):** clone the repo once and point `command: node` at the built server with a relative path (never absolute):
+>      ```sh
+>      git clone https://github.com/ctxr-dev/mcp-github .tools/mcp-github
+>      ( cd .tools/mcp-github && npm ci && npm run build )
+>      ```
+>      then set `"command": "node", "args": ["./.tools/mcp-github/dist/server.mjs"]`.
+>    - **Formal installer:** a dedicated `mcp-github-install` CLI is planned; this step collapses to a single command once it lands.
+>
+>    </details>
 >
 > 6. **Pick a feature preset.** Ask the user once:
 >    > "Which features do you need?"
