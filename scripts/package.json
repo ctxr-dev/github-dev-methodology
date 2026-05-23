@@ -9,7 +9,8 @@
     "ctxr-validate-tree": "./validate-tree.mjs",
     "ctxr-validate-issue-schema": "./validate-issue-schema.mjs",
     "ctxr-validate-labels": "./validate-labels.mjs",
-    "ctxr-diff-plan": "./diff-plan.mjs"
+    "ctxr-diff-plan": "./diff-plan.mjs",
+    "ctxr-pr-review-watch": "./pr-review-watch.mjs"
   },
   "engines": { "node": ">=20" },
   "dependencies": {

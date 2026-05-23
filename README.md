@@ -41,7 +41,7 @@
 
 | Capability | What it does |
 |---|---|
-| 🔁 **PR review loop** | Explicit exit predicate (reviewer approved on HEAD · zero unresolved comments · CI green). 5-min cadence, 24h max. |
+| 🔁 **PR review loop** | Watches a SET of reviewers (Copilot + humans + teams). Explicit exit predicate (every configured reviewer re-reviewed HEAD and green · no unresolved non-outdated thread by them · required approvals · CI green). Foreground watch, 60s default cadence, 24h max. |
 | 📋 **Plan → Issues** | Turn a markdown plan into a wired native sub-issue tree on a GitHub Project. Every issue cold-start ready. |
 | 🎯 **Issue lifecycle** | Single-issue / single-PR flow. Agent owns `In progress` and `In review`; human owns `Done`, merge, close. |
 | 📐 **Canonical issue schema** | Metadata header + Why + Action items + Acceptance + Implementation pointers + Test plan. Validator hard-fails on missing sections. |
@@ -171,7 +171,7 @@ After install, every future session in this project picks up the methodology aut
 
 The methodology is its **own git repository** (cloned under `.agents/ctxr-dev/github-dev-methodology/`). The outer project must **not** track it — otherwise you get nested-`.git/` warnings, methodology updates appearing as foreign diffs in your PRs, and accidental commits of methodology content into your project.
 
-The `*.local.md` rule keeps the per-project config private to each developer — it holds project URLs, org names, reviewer preferences, and auto-discovered bot IDs.
+The `*.local.md` rule keeps the per-project config private to each developer: it holds project URLs, org names, the reviewer set (and required-approver subset), and auto-discovered bot IDs.
 
 ---
 
@@ -196,7 +196,7 @@ The `*.local.md` rule keeps the per-project config private to each developer —
 | Aider · Continue · Cline · Zed · Warp | ✅ | direct |
 | **Claude Code** | ❌ *(May 2026)* | via `@AGENTS.md` import in `CLAUDE.md` |
 
-The methodology docs themselves contain **no agent-specific tool names** — they describe capabilities ("read the file", "schedule a wake-up") that map to whatever primitives your agent harness provides.
+The methodology docs themselves contain **no agent-specific tool names**: they describe capabilities ("read the file", "block in the foreground until the review watch returns") that map to whatever primitives your agent harness provides. The optional `gh_pr_review_watch` MCP tool is vendor-neutral (any client calls it the same way); a no-MCP `scripts/pr-review-watch.mjs` fallback covers harnesses without it.
 
 ---
 

@@ -40,7 +40,7 @@ Closes: ctxr-dev/agent-staff-engineer#52
 
 ## Reviewer auto-discovery + request
 
-> **Skip this entire section if `copilot_review` is off in the active project.** The methodology then falls back to plain `gh pr edit --add-reviewer <login>` against the human named in `default_reviewer`, with no auto-discovery and no GraphQL `requestReviews` mutation.
+> **Skip this entire section if `copilot_review` is off in the active project.** The methodology then falls back to plain `gh pr edit --add-reviewer <login>` against the humans/teams in the `reviewers` set (legacy `default_reviewer` honored as a one-element fallback), with no auto-discovery and no GraphQL `requestReviews` mutation.
 
 The PR loop ([`pr-loop.md`](pr-loop.md)) requires triggering a code review after every push. The mechanism depends on the reviewer.
 
@@ -78,7 +78,7 @@ gh api graphql -f query='mutation($pid:ID!,$bots:[ID!]!){requestReviews(input:{p
 Notes:
 - `union: true` preserves existing requests (additive, not destructive).
 - Successful response: `{"data":{"requestReviews":{"pullRequest":{"reviewRequests":{"nodes":[]}}}}}`. The empty `nodes` is NOT a failure — it means Copilot consumed the request and moved into review state.
-- Confirm by polling `gh pr view <num> --json reviews` after 30-60 seconds.
+- Then hand off to the foreground watch (the `gh_pr_review_watch` tool or `scripts/pr-review-watch.mjs`, default 60s cadence) per [`pr-loop.md`](pr-loop.md); the watch confirms Copilot has reviewed HEAD. No separate post-trigger poll is needed.
 
 ### 3. Discovery snippet for the bot node ID
 
@@ -93,11 +93,11 @@ gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$
 
 If Copilot isn't on the repo:
 
-1. Check `.agents/ctxr-dev/github-dev-methodology.config.local.md` for `default_reviewer`. If set, use it.
-2. If not set, ASK the user which human reviewer(s) to use (and write the answer back to the config).
-3. Request via standard REST (works for human users):
+1. Check `.agents/ctxr-dev/github-dev-methodology.config.local.md` for the `reviewers` set (legacy `default_reviewer` is honored as a one-element fallback). If non-empty, use it.
+2. If empty, ASK the user which human reviewer(s)/team(s) to use (and write the answer back to the config as `reviewers` + `required_reviewers`).
+3. Request each human/team via standard REST (works for human users):
    ```bash
-   gh pr edit <num> --repo <OWNER>/<REPO> --add-reviewer <login>
+   gh pr edit <num> --repo <OWNER>/<REPO> --add-reviewer <login> [--add-reviewer <login2>]
    ```
 
 ## Resolving review threads after fixing

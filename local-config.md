@@ -47,10 +47,14 @@ Every project section also carries a `### Features` table that determines which 
 
 | Key | Value |
 |---|---|
-| `default_reviewer` | `copilot` \| `<github-login>` \| `ask` |
+| `reviewers` | comma-separated set requested on every PR: `copilot`, `<github-login>`, `<team-slug>`. Value `ask` triggers the first-run discovery + multi-select (see "How the agent reads it"). |
+| `required_reviewers` | subset of `reviewers` whose `APPROVED` gates the exit predicate (humans only; bots have no `APPROVED` state). May be empty. |
+| `pr_loop_wait_for` | `any` (default) \| `smart` \| `all` \| `quorum:N`. Selects which reviewer transitions wake the loop between cycles (does NOT relax the done predicate). |
 | `copilot_bot_id` | BOT_kgDOXXXXXX (per-installation; discover via commits.md snippet) |
-| `pr_loop_poll_seconds` | 300 (override default 5-min cadence) |
+| `pr_loop_poll_seconds` | 60 (override the default 60s cadence) |
 | `pr_loop_max_hours` | 24 (override default 24h max-no-progress) |
+
+> **Legacy `default_reviewer` is still honored as a one-element fallback** when `reviewers` is empty (doc/agent contract; nothing in the parser reads it, so the agent applies the fallback). Prefer `reviewers`; migrate old configs by moving the single value into the `reviewers` set.
 
 ### Dev-loop modes
 
@@ -158,6 +162,10 @@ At session start (or before any methodology recipe runs), the agent:
 1. Checks if `<project-root>/.agents/ctxr-dev/github-dev-methodology.config.local.md` exists.
 2. If yes: reads the file, resolves which project section to use (per the precedence above), parses the `### Features` table into a flag map, and holds the project's keys + feature map for the session.
 3. If no: creates it from `templates/config.local.md` and **asks the user** to (a) pick a preset (`pr-only` / `single-issue` / `full`), (b) fill in at least one `## Project: <slug>` section with the `active_project` pointer.
+4. **Reviewer-set discovery (one time, when `pr_loop` is on and `reviewers` is unset or `ask`).** As part of bootstrap, the agent discovers the candidate reviewers ONCE, asks the user to choose, and persists the result so no later step re-asks:
+   - **Discover candidates.** Copilot via the `suggestedReviewers` / `suggestedActors` surface (and, when found, capture `copilot_bot_id` per the [`commits.md`](commits.md) snippet); humans and teams via the repo's collaborators, `CODEOWNERS`, and `suggestedActors`.
+   - **Ask the user (multi-select)** which of those reviewers to request on EVERY PR, and which of the chosen humans MUST approve before merge.
+   - **Persist** the answer as `reviewers` (the full set), `required_reviewers` (the must-approve humans), and `copilot_bot_id` (if Copilot was chosen) in the active project's section. This is the only reviewer ask; [`pr-loop.md`](pr-loop.md) just reads the persisted set thereafter.
 
 ## Why markdown not JSON
 
@@ -172,7 +180,7 @@ The values are user- and machine-specific:
 
 - The org might differ if the user works in multiple orgs.
 - The Copilot bot ID is per-org-per-repo-installation.
-- The default reviewer is a personal preference.
+- The reviewer set is a per-project, often personal, preference.
 - Polling overrides may be opinion-driven.
 
 These shouldn't accidentally land in commits and propagate to other contributors.
@@ -199,8 +207,8 @@ The next session inherits the discovery.
 
 Different projects in the same org might have different conventions:
 
-- One project uses Copilot reviews; another uses a named human.
-- One project wants a 5-min poll; another wants 15-min.
+- One project uses Copilot reviews; another uses a named human plus a team.
+- One project wants a 60s poll; another wants 5-min.
 - One project runs `pr-only`; another runs `full` with a project board.
 
 Per-project sections let each board override defaults — including the feature set — without coordinating across the workspace.

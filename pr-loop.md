@@ -13,59 +13,74 @@ For the broader issue → branch → PR → close flow that wraps this loop, see
 
 ## Exit predicate
 
-The loop terminates iff ALL three hold:
+The loop watches a SET of reviewers (Copilot + named humans + teams; see "Reviewer set" below), not a single reviewer. It terminates iff ALL three hold:
 
-1. **Every required reviewer** (effective list = configured `required_reviewers` + CODEOWNERS hits on changed paths) has `approved` review status.
-2. **The reviewer's last review is on the current HEAD AND contains zero new comments.** Check via:
+1. **Every CONFIGURED reviewer has re-reviewed the current HEAD and is green.** Per reviewer, take their latest review via the `latestReviews` connection, EXCLUDING `DISMISSED` and `PENDING` states, then:
+   - `pending`: no such review whose `commit.oid == <HEAD SHA>` (they have not reached HEAD yet).
+   - `needs-work`: on HEAD AND (latest state `CHANGES_REQUESTED` OR there is >=1 review thread with `isResolved == false && isOutdated == false` whose first comment author is this reviewer).
+   - `green`: on HEAD AND not needs-work.
+
+   The exit signal is **reviewer-re-reviewed-HEAD plus no unresolved, non-outdated thread authored by that reviewer**, NOT `review.comments.totalCount`. That field undercounts (it omits replies) and misses Copilot's thread-based findings (Copilot is always `COMMENTED` and can carry a non-empty summary with zero inline comments), so it is the wrong signal. Use the per-reviewer unresolved-non-outdated-thread count instead. Check via:
    ```graphql
-   reviews(last:1) { nodes { commit { oid } comments(first:10) { totalCount } } }
+   latestReviews(first:30) { nodes { author { login } state commit { oid } } }
+   reviewThreads(first:100) { nodes { isResolved isOutdated comments(first:1) { nodes { author { login } } } } }
    ```
-   Exit only when `commit.oid == <HEAD SHA>` AND `comments.totalCount == 0`. **Resolving a thread is a UI affordance, not the exit signal** — `resolveReviewThread` collapses the thread but does not delete its comments, so a resolved thread still contributes to `comments.totalCount`. Check thread-resolution as a hygiene step (so the PR UI is clean for the human merger), but don't conflate it with the exit predicate.
-3. **CI status: success** for the head SHA.
+2. **Every required-approver is `APPROVED`.** The required set = configured `required_reviewers` (humans only; bots have no `APPROVED` state) + CODEOWNERS hits on changed paths. A green human in the required set must also be `APPROVED`, so an "all-green / zero-approvals" state does not slip past branch protection.
+3. **CI status: success** for the head SHA. `statusCheckRollup` is null when the repo has no checks; treat null as "no CI gate" unless the project sets `require-ci`, in which case null fails with a clear reason.
 
 Otherwise: keep iterating.
+
+Note on thread resolution: **resolving a thread is mandatory bookkeeping, not the exit signal itself.** `resolveReviewThread` does not make a reviewer re-review, so resolving alone never satisfies predicate (1); the reviewer must come back to HEAD. What resolution buys you is honesty: it keeps the set of unresolved, non-outdated, reviewer-authored threads equal to your outstanding work, which is exactly the signal predicate (1) reads. Resolve every thread you fixed in the SAME push (see "Addressing review comments"); a thread left open keeps that reviewer `needs-work` forever.
 
 ### Things that look like exit but are NOT exit
 
 These are common false-positives. None of them, alone or in any combination, satisfies the predicate above:
 
-- ❌ **CI green** — necessary, not sufficient. Predicate (2) is independent of CI.
-- ❌ **`mergeable: MERGEABLE` / `mergeStateStatus: CLEAN`** — only means there are no merge conflicts and required checks pass. It says nothing about review comments.
-- ❌ **All review threads `isResolved: true`** — resolution is a UI affordance (see above). Resolved threads still count toward `comments.totalCount`.
-- ❌ **Reviewer's last review has 0 new comments, but on a STALE commit** — predicate (2) requires the review to be on the current HEAD SHA. A stale "0 comments" review is not exit.
-- ❌ **No new comments since the last push** — silence isn't approval. Predicate (1) requires `state == APPROVED`. For Copilot specifically, there is no `APPROVED` state, so the effective signal is "review on HEAD with zero comments AND no further re-request needed".
-- ❌ **You believe the remaining comments are out of scope** — that's a conversation to have with the user via PR comment, not a reason to declare exit. Out-of-scope feedback either gets pushed back on (leave the thread open as discussion signal) or deferred to a follow-up issue, but the predicate doesn't bend.
+- ❌ **CI green**: necessary, not sufficient. Predicate (1) is independent of CI.
+- ❌ **`mergeable: MERGEABLE` / `mergeStateStatus: CLEAN`**: only means there are no merge conflicts and required checks pass. It says nothing about review state.
+- ❌ **All review threads `isResolved: true`, but a configured reviewer has not re-reviewed HEAD**: resolution is mandatory bookkeeping (see above), but it is not exit on its own. Predicate (1) requires each configured reviewer to re-review the current HEAD. Resolving threads then waiting for the re-review is the correct order; declaring exit at resolution-time is not.
+- ❌ **A reviewer is green, but on a STALE commit**: predicate (1) requires each configured reviewer's latest non-dismissed review to be on the current HEAD SHA. A stale green review is not exit.
+- ❌ **No new comments since the last push**: silence is not approval. A required human must be `APPROVED` on HEAD; a non-required reviewer (Copilot) must be on HEAD with no unresolved non-outdated thread by them AND have actually re-reviewed the latest push.
+- ❌ **You believe the remaining comments are out of scope**: that is a conversation to have with the user via PR comment, not a reason to declare exit. Out-of-scope feedback is either pushed back on (resolve the thread WITH a rationale comment so it stops counting, or convert it to a follow-up issue) or deferred, but it is never left dangling and the predicate does not bend.
 
-Until predicate (1) AND (2) AND (3) all hold, the PR is **NOT ready for merge** — even if the diff feels finished, even if the human reviewer is idle. Report current state honestly ("CI green, mergeable, but reviewer left N comments on HEAD") and continue the loop, or escalate per the halt conditions below.
+Until predicate (1) AND (2) AND (3) all hold, the PR is **NOT ready for merge**, even if the diff feels finished, even if the human reviewer is idle. Report current state honestly ("CI green, mergeable, but reviewer X is still on a stale commit and reviewer Y left an unresolved thread on HEAD") and continue the loop, or escalate per the halt conditions below.
 
 ## Polling cadence
 
-- **Check every 5 minutes** while the loop is active.
-- **Maximum 24 hours** without a state change before halt-and-ask the user. Idle reviewer time is normal; don't give up early.
-- "No new comments this cycle" is NOT a reason to stop or to return control to the user — keep polling.
-- **Polling is foreground and blocking.** The agent MUST keep the loop in the foreground for the entire run. Use a blocking `sleep 300` (or your harness's foreground-blocking equivalent) inside a `while true` loop. The only exits are: (a) exit predicate holds, (b) 24h elapsed, (c) user interrupts the run.
+- **Default cadence is 60 seconds**, configurable via `pr_loop_poll_seconds` in the per-project config.
+- **Maximum 24 hours** without a state change before halt-and-ask the user (override with `pr_loop_max_hours`). Idle reviewer time is normal; don't give up early. A configured reviewer that never re-reviews keeps the loop not-done and trips the 24h halt rather than auto-completing.
+- "No new comments this cycle" is NOT a reason to stop or to return control to the user; keep watching.
+- **Polling is foreground and blocking.** The agent MUST keep the loop in the foreground for the entire run; control never returns to the user until the exit predicate holds, 24h elapses, or the user interrupts. There are two equivalent foreground mechanisms:
+  1. **Structured (preferred when the MCP server is present): `gh_pr_review_watch`.** Call it with the watched PR set + the configured reviewer set; it blocks for a bounded window (about 25s, kept under the client tool-call timeout), then returns on the first state change, on `ready`, or on its own timeout, along with a `fingerprint`. Immediately re-invoke it, passing the returned `fingerprint` back as `sinceFingerprint` so it only returns on the NEXT transition (this is what stops a hot-loop). Keep re-invoking in the foreground until `ready` or halt; never hand control back to the user between blocks.
+  2. **No-MCP fallback: the gh-CLI script as a single foreground long-poll.** Run `node scripts/pr-review-watch.mjs --pr <owner/name#N> [--pr ...] --reviewer <login> [--reviewer ...] [--required <login> ...] --interval <pr_loop_poll_seconds>`. It is ONE long-running foreground process that polls internally every `--interval` seconds, holding last-seen state in memory (so it needs no fingerprint and cannot hot-loop), and blocks until every watched PR is ready (exit 0), `--max-wait` elapses (exit 2), or it is interrupted. It computes the SAME predicate as the tool.
+
+  Both are foreground; neither schedules a wake-up, forks to the background, or returns control to the user mid-watch. (Turn-efficiency note: the long-poll script can block a full `--interval` per cycle with no agent turns, which suits long quiet waits; the MCP tool returns within its bounded window and is re-invoked, which suits structured, multiplexed output. Power users can raise the client tool-call timeout to lengthen the tool's block.)
 
 ### Things that look like a valid pause but are NOT
 
 These are common false exits. None of them is permitted — every one of them leaves the user nudging the agent to keep going, which defeats the loop:
 
-- ❌ **"I'll check back in 5 minutes."** Returning control to the user between cycles. Not allowed; the loop must block in-process.
-- ❌ **Scheduling a wake-up / callback / cron and returning.** The harness's async wake-up primitives are NOT the polling mechanism. Use blocking `sleep` inside the loop.
+- ❌ **"I'll check back in a minute."** Returning control to the user between cycles. Not allowed; the loop must block in-process (re-invoke `gh_pr_review_watch`, or stay inside the long-poll script).
+- ❌ **Scheduling a wake-up / callback / cron and returning.** The harness's async wake-up primitives are NOT the polling mechanism. Use a foreground blocking watch (the tool or the long-poll script).
 - ❌ **Marking the PR or task as "done" while waiting for review.** The loop is not done until the exit predicate (or 24h, or user interrupt) fires.
 - ❌ **Asking the user to confirm CI status, reviewer state, or thread resolution.** The agent reads that itself each cycle.
 - ❌ **Treating a single no-change cycle as a halt condition.** Silence is normal; keep going.
 
-If a single cycle reports no progress, the agent re-sleeps and re-polls. It does NOT report back to the user and wait for a prompt.
+If a single cycle reports no progress, the agent re-arms the watch (re-invoke the tool with the last `fingerprint`, or remain in the long-poll). It does NOT report back to the user and wait for a prompt.
 
-## Reviewer auto-discovery (run once per project, cache in local config)
+## Reviewer set (read from config; discovery happens once at bootstrap)
 
-> **Skip the Copilot branch (step 1) if `copilot_review` is off in the active project.** In that case start from step 2 and go straight to a human reviewer from config or "ask".
+The loop triggers and watches a SET of reviewers, persisted in the per-project config as `reviewers` (a comma-separated set of `copilot` / `<github-login>` / `<team-slug>`). The subset whose `APPROVED` gates the exit predicate is `required_reviewers` (humans only).
 
-Order of precedence:
+Order of precedence when assembling the set for this run:
 
-1. **Copilot is available?** *(only if `copilot_review` is on)* Check via `gh api graphql -f query='{ repository(owner: "<OWNER>", name: "<REPO>") { pullRequest(first: 1) { nodes { reviews(first: 5) { nodes { author { __typename login } } } } } } }'`. Filter for `__typename == "Bot" && login == "copilot-pull-request-reviewer"`. If found, capture the bot node id (see `commits.md` for the extraction snippet).
-2. **Configured `default_reviewer` in `.agents/ctxr-dev/github-dev-methodology.config.local.md`?** Use it.
-3. **Ask the user** which reviewer(s) to use. **Persist the answer** to `.agents/ctxr-dev/github-dev-methodology.config.local.md` so future sessions don't re-ask.
+1. **Persisted `reviewers` set in `.agents/ctxr-dev/github-dev-methodology.config.local.md` is non-empty?** Use it as-is (each entry is requested on every PR; `copilot` expands to `copilot-pull-request-reviewer`).
+2. **Empty, but legacy `default_reviewer` is set?** Honor it as a one-element set (back-compat fallback).
+3. **Neither is set?** Do a just-in-time ask for this PR (which reviewers to request, which humans must approve), then persist the answer so the next session does not re-ask.
+
+The ONE-TIME candidate discovery and multi-select (enumerate Copilot + collaborators + CODEOWNERS + teams, ask the user, persist `reviewers` + `required_reviewers` + `copilot_bot_id`) runs at config bootstrap, not here. See [`local-config.md`](local-config.md)'s "How the agent reads it" and the first-run ask in [`index.md`](index.md). This section just reads the result.
+
+> **Skip the Copilot expansion if `copilot_review` is off in the active project.** With Copilot off, the set is humans/teams only, requested via plain `gh pr edit --add-reviewer <login>` (see [`commits.md`](commits.md)).
 
 ## Loop step-by-step
 
@@ -97,53 +112,64 @@ gh pr create \
 EOF
 )"
 
-# 4. Trigger review (Copilot + humans). For Copilot, use GraphQL botIds (NOT REST):
-COPILOT_ID=<from-config-or-discovery>  # e.g. BOT_kgDOXXXXXX (per-installation; see commits.md)
+# 4. Trigger review for the WHOLE configured set (humans + teams + Copilot) in one
+#    requestReviews call. botIds is REQUIRED for Copilot (REST silently no-ops on bots);
+#    userIds / teamIds carry the humans + teams. union:true preserves existing requests.
 PR_NUM=<number>
 PR_ID=$(gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){id}}}' \
   -f o=<OWNER> -f r=<REPO> -F n=$PR_NUM --jq '.data.repository.pullRequest.id')
-gh api graphql -f query='mutation($pid:ID!,$bots:[ID!]!){requestReviews(input:{pullRequestId:$pid,botIds:$bots,union:true}){pullRequest{reviewRequests(first:10){nodes{requestedReviewer{__typename ... on Bot{login} ... on User{login}}}}}}}' \
-  -f pid="$PR_ID" -f bots="$COPILOT_ID"
+# Resolve the configured set to node ids: bot ids (Copilot), user ids (humans), team ids (teams).
+gh api graphql -f query='mutation($pid:ID!,$users:[ID!],$teams:[ID!],$bots:[ID!]){requestReviews(input:{pullRequestId:$pid,userIds:$users,teamIds:$teams,botIds:$bots,union:true}){pullRequest{reviewRequests(first:20){nodes{requestedReviewer{__typename ... on Bot{login} ... on User{login} ... on Team{slug}}}}}}}' \
+  -f pid="$PR_ID" -f users="$USER_IDS" -f teams="$TEAM_IDS" -f bots="$COPILOT_ID"
 
-# 5. Poll every 5 min until exit predicate holds.
-# Foreground polling — DO NOT replace the sleep with a wake-up tool or callback that
-# returns control to the user. The loop blocks in-process until exit predicate / 24h / interrupt.
-while true; do
-  STATE=$(gh pr view $PR_NUM --repo <OWNER>/<REPO> \
-    --json reviewDecision,reviews,reviewThreads,statusCheckRollup,mergeable)
-  if echo "$STATE" | jq -e '<exit-predicate>' > /dev/null; then break; fi
-  # else: address comments, push fix, resolve threads (see below), then re-sleep
-  sleep 300
-done
+# 5. Watch the set in the FOREGROUND until the exit predicate holds (default cadence 60s).
+#    DO NOT replace this with a wake-up tool or callback that returns control to the user.
+#    Either re-invoke the gh_pr_review_watch MCP tool in a loop (passing back its fingerprint),
+#    or run the long-poll script below as a single blocking foreground process:
+node scripts/pr-review-watch.mjs \
+  --pr <OWNER>/<REPO>#$PR_NUM \
+  --reviewer copilot --reviewer <human-login> \
+  --required <human-login> \
+  --interval ${PR_LOOP_POLL_SECONDS:-60}
+# Exit 0 = every configured reviewer green on HEAD + required approvals + CI (predicate met).
+# Exit 2 = --max-wait elapsed. On each non-ready cycle: address comments, push the fix,
+# resolve the threads you fixed in the SAME push (see below), re-request the set, stay in the watch.
 ```
 
-## Addressing review comments
+## Addressing review comments (the mandatory loop)
 
-For each new comment from the reviewer:
+**Invariant:** the set of unresolved, non-outdated review threads whose first comment author is a configured reviewer IS your outstanding actionable work. Keep that set honest and each cycle processes only NEW asks. Two caveats make it honest: (a) filter threads BY author, since with multiple reviewers you must attribute each thread to the reviewer who opened it; (b) GitHub does NOT auto-resolve threads when you push (they go `isOutdated:true` but stay `isResolved:false`), and a pushed-back or deferred thread left open would keep its author `needs-work` forever, so it MUST be resolved-with-rationale or escalated to a follow-up issue, never left dangling.
 
-1. **Read** the comment + the cited code (always pull the actual file, never trust just the summary).
-2. **Decide**: address the comment OR push back with reasoning OR ask user.
-3. **If addressing**: edit, run tests, commit (`fix(review): <what>`), push.
-4. **Resolve the thread** in the SAME turn as the push:
+When a watch cycle reports a reviewer as `needs-work`, run this loop:
+
+1. **Fetch the unresolved, non-outdated threads** authored by that reviewer (== the new work):
    ```bash
-   # 1. Fetch unresolved threads. Use first:100 + cursor pagination — first:50 silently truncates on long-running PRs.
-   gh api graphql -f query='query($o:String!,$r:String!,$n:Int!,$c:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$c){totalCount pageInfo{hasNextPage endCursor} nodes{id isResolved comments(first:1){nodes{body path line}}}}}}}' \
-     -f o=<OWNER> -f r=<REPO> -F n=$PR_NUM --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
-   # If pageInfo.hasNextPage, fetch the next page with -f c=<endCursor> until exhausted, then collect all unresolved IDs.
-
-   # 2. For each thread you fixed, resolve via GraphQL (NO REST equivalent exists):
+   # first:100 + cursor pagination; first:50 silently truncates on long-running PRs.
+   gh api graphql -f query='query($o:String!,$r:String!,$n:Int!,$c:String){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated comments(first:1){nodes{author{login} body path line}}}}}}}' \
+     -f o=<OWNER> -f r=<REPO> -F n=$PR_NUM \
+     --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false and .isOutdated == false)'
+   # If pageInfo.hasNextPage, fetch the next page with -f c=<endCursor> until exhausted before processing.
+   ```
+2. **Read** each thread + the cited code (always pull the actual file, never trust just the summary).
+3. **Decide** per thread: address it, push back with reasoning, or ask the user.
+4. **If addressing**: edit, run tests, commit (`fix(review): <what>`), push.
+5. **MANDATORY: resolve every thread you fixed in the SAME push** (no REST equivalent exists):
+   ```bash
    gh api graphql -f query='mutation($tid:ID!){resolveReviewThread(input:{threadId:$tid}){thread{isResolved}}}' \
      -f tid="<THREAD_ID>"   # PRRT_... node id from step 1
    ```
-   **Pagination gotcha:** A long-running PR can accumulate >50 review threads. `first:50` (or smaller) silently drops threads beyond the page boundary. The API will report "0 unresolved" while the PR UI still shows open threads. Always paginate via `pageInfo.hasNextPage` + `endCursor` until exhausted before declaring the predicate met.
-5. **Do NOT resolve** threads you didn't fix — leave them open as discussion signal.
+   - A thread you **pushed back on** or **deferred** is NOT left dangling: either post a rationale comment and resolve it (so it stops counting against the predicate), or convert it to a follow-up issue and resolve it with a link. Leaving it open blocks done forever.
+   - **Do NOT resolve** a thread you did not address and have not consciously dispositioned; that is still live discussion signal.
+6. **Re-request the configured set** (same `requestReviews` mutation as step 4, `union:true`) so each reviewer re-reviews the new HEAD, then stay in the foreground watch.
+
+**Pagination gotcha:** A long-running PR can accumulate >50 review threads. `first:50` (or smaller) silently drops threads beyond the page boundary; the API reports "0 unresolved" while the UI still shows open threads. Always paginate via `pageInfo.hasNextPage` + `endCursor` until exhausted before declaring the predicate met.
 
 ## Re-requesting review after a push
 
-After every meaningful push that addresses a comment, re-request the reviewer (Copilot picks up the new push automatically, but explicit re-request reduces ambiguity for human reviewers):
+After every meaningful push that addresses a comment, re-request the WHOLE configured set (Copilot picks up the new push automatically, but explicit re-request reduces ambiguity for human reviewers and forces each reviewer's latest review onto the new HEAD, which is what predicate (1) checks):
 
 ```bash
-# Same requestReviews mutation as step 4 above; union:true preserves previous requests.
+# Same requestReviews mutation as step 4 above (userIds + teamIds + botIds); union:true preserves previous requests.
 ```
 
 ## Halt conditions
