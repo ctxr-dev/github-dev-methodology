@@ -33,6 +33,7 @@ Every project section also carries a `### Features` table that determines which 
 | `parallel_validation` | false |
 | `plan_deprecation` | false |
 | `cold_start` | false |
+| `subagent_review` | false |
 
 ### Project values
 
@@ -77,7 +78,7 @@ Every project section also carries a `### Features` table that determines which 
 
 > **Polling is always foreground.** There is no `polling_paradigm` flag any more (formerly `wakeup | background`); both options are gone. See [`pr-loop.md`](pr-loop.md)'s "Polling cadence" section.
 
-## The 12 feature flags
+## The 13 feature flags
 
 Each row in the `### Features` table maps to one (and only one) topic doc. Flags default to `false` if the row is missing.
 
@@ -95,6 +96,7 @@ Each row in the `### Features` table maps to one (and only one) topic doc. Flags
 | `parallel_validation` | `parallel-validation.md` (3-agent post-migration audit) |
 | `plan_deprecation` | `plan-deprecation.md` (auto-minimize plan files post-migration) |
 | `cold_start` | `cold-start.md` (4-step warm-up reading an existing issue + board state) |
+| `subagent_review` | the optional plan-review + conformance-review gates inside `agents-orchestration.md` (read-only fan-out). Requires `agents_orchestration`. |
 
 ## The 3 install presets
 
@@ -103,8 +105,8 @@ The install prompt asks once: "Which preset?" Pick the closest one; flip individ
 | Preset | What's on | When to pick |
 |---|---|---|
 | `pr-only` | `pr_loop`, `copilot_review`, `conventional_commits`, `agents_orchestration`, `audit_vs_execute` | You just want the PR loop + Copilot review. No issues, no project board. Skips: every issue/project/label/migration recipe. |
-| `single-issue` | `pr-only` + `issue_schema`, `issue_lifecycle` | You file issues per fix but don't run a project board. Adds the canonical body shape + single-issue/single-PR flow. |
-| `full` | all 12 | You run a GitHub Project with the full methodology: sub-issue trees, label taxonomy, plan migrations, post-migration validation, cold-start, plan deprecation. |
+| `single-issue` | `pr-only` + `issue_schema`, `issue_lifecycle`, `subagent_review` | You file issues per fix but don't run a project board. Adds the canonical body shape + single-issue/single-PR flow, plus the optional plan-review / conformance-review gates. |
+| `full` | all 13 | You run a GitHub Project with the full methodology: sub-issue trees, label taxonomy, plan migrations, post-migration validation, cold-start, plan deprecation, optional review gates. |
 
 Default values for fields not used by your preset can be left as `<not used: pr-only>` (or your preset's name). When you upgrade the preset later, fill them in.
 

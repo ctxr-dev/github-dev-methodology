@@ -36,6 +36,7 @@ Defaults below = the `pr-only` preset. Flip to `true` to opt into more recipes. 
 | `parallel_validation` | false |
 | `plan_deprecation` | false |
 | `cold_start` | false |
+| `subagent_review` | false |
 
 ### Project values
 

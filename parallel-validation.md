@@ -9,6 +9,8 @@ requires:
 
 After every plan migration to issues, spawn 3 Plan agents in parallel to audit the result. **Scope: TOUCHED issues only.** Don't re-audit untouched portions of the tree — token economy.
 
+> **General analogue.** This recipe is the issue-tree specialization of the post-implementation CONFORMANCE-review described in [`agents-orchestration.md`](agents-orchestration.md) ("Optional review gates", gated by `subagent_review`). That gate is the general plan-vs-work form (does the built work match the plan); this file is the concrete post-migration audit of the issue tree it produced.
+
 ## Why
 
 Single-agent self-review misses gaps the same agent created. Parallel audits with different perspectives catch:
