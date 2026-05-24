@@ -52,9 +52,11 @@ Fields unused by the current feature set may be left as `<not used: pr-only>` (o
 
 | Key | Value |
 |---|---|
-| `default_reviewer` | <one of: `copilot`, `<github-login>`, `ask`> |
+| `reviewers` | <comma-separated INDIVIDUAL logins watched per PR: `copilot`, `<github-login>` (a `<team-slug>` is not tracked by the watch, list members instead); or `ask` for first-run discovery> |
+| `required_reviewers` | <subset of `reviewers` whose APPROVED gates merge; humans only; may be empty> |
+| `pr_loop_wait_for` | <one of: `any` (default), `smart`, `all`, `quorum:N`> |
 | `copilot_bot_id` | <auto-discovered after first PR; e.g. `BOT_kgDOXXXXXX`> |
-| `pr_loop_poll_seconds` | 300 |
+| `pr_loop_poll_seconds` | 60 |
 | `pr_loop_max_hours` | 24 |
 
 ### Dev-loop modes (if the project supports them; see methodology pr-loop.md)

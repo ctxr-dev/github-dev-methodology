@@ -33,7 +33,7 @@
 
 <br/>
 
-> AI coding agents drift. Different sessions, different agents, and humans on the same team all need **one durable contract** for how work is shaped: how issues are written, how PRs converge to merge, how plans become tracked work. This repo bundles that contract — plus the validators that enforce it — in a form **any agent** can read.
+> AI coding agents drift. Different sessions, different agents, and humans on the same team all need **one durable contract** for how work is shaped: how issues are written, how PRs converge to merge, how plans become tracked work. This repo bundles that contract - plus the validators that enforce it - in a form **any agent** can read.
 
 ---
 
@@ -41,7 +41,7 @@
 
 | Capability | What it does |
 |---|---|
-| 🔁 **PR review loop** | Explicit exit predicate (reviewer approved on HEAD · zero unresolved comments · CI green). 5-min cadence, 24h max. |
+| 🔁 **PR review loop** | Watches a SET of reviewers (Copilot + individual humans; a team is requested for review but tracked via its member logins). Explicit exit predicate (every configured reviewer re-reviewed HEAD and green · no unresolved non-outdated thread by them · required approvals · CI green). Foreground watch, 60s default cadence, 24h max. |
 | 📋 **Plan → Issues** | Turn a markdown plan into a wired native sub-issue tree on a GitHub Project. Every issue cold-start ready. |
 | 🎯 **Issue lifecycle** | Single-issue / single-PR flow. Agent owns `In progress` and `In review`; human owns `Done`, merge, close. |
 | 📐 **Canonical issue schema** | Metadata header + Why + Action items + Acceptance + Implementation pointers + Test plan. Validator hard-fails on missing sections. |
@@ -59,7 +59,7 @@
 Works with any agent that can run shell and edit files. **Copy this prompt and paste it to your AI.**
 
 > [!IMPORTANT]
-> **Install the `github-dev-methodology` into this project.** Every step is idempotent — re-running is safe. **Run all commands from the project root** (the directory you want the methodology installed into).
+> **Install the `github-dev-methodology` into this project.** Every step is idempotent - re-running is safe. **Run all commands from the project root** (the directory you want the methodology installed into).
 >
 > 1. **Clone the methodology under `.agents/`.** Create `.agents/` if missing.
 >    ```sh
@@ -70,7 +70,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    fi
 >    ```
 >
-> 2. **Update `.gitignore` (idempotent).** Run this exact shell block — it creates `.gitignore` if absent, ensures a trailing newline, and appends only patterns that are not already there:
+> 2. **Update `.gitignore` (idempotent).** Run this exact shell block - it creates `.gitignore` if absent, ensures a trailing newline, and appends only patterns that are not already there:
 >    ```sh
 >    touch .gitignore
 >    [ -n "$(tail -c1 .gitignore 2>/dev/null)" ] && printf '\n' >> .gitignore
@@ -88,7 +88,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >
 >      ## Methodologies
 >
->      - [ctxr-dev/github-dev-methodology](.agents/ctxr-dev/github-dev-methodology/index.md) — GitHub Issues + Projects workflow, PR loop, plan-to-issues, validation. **ALWAYS read first.**
+>      - [ctxr-dev/github-dev-methodology](.agents/ctxr-dev/github-dev-methodology/index.md) - GitHub Issues + Projects workflow, PR loop, plan-to-issues, validation. **ALWAYS read first.**
 >      ```
 >    - If `AGENTS.md` exists and already contains the identity-key URL, do nothing.
 >    - If `AGENTS.md` exists without the identity-key URL: ensure a `## Methodologies` section exists (append it with a leading blank line if not), then append the bullet above to that section.
@@ -153,13 +153,13 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >
 > 6. **Pick a feature preset.** Ask the user once:
 >    > "Which features do you need?"
->    > - **`pr-only`** — PR loop, Copilot review, conventional commits, agents orchestration, audit-vs-execute. No issues, no project board.
->    > - **`single-issue`** — `pr-only` + issue lifecycle + canonical issue schema. Still no project board.
->    > - **`full`** — `single-issue` + plan-to-issues, parallel validation, plan deprecation, cold-start, label taxonomy + native Issue Type.
+>    > - **`pr-only`** - PR loop, Copilot review, conventional commits, agents orchestration, audit-vs-execute. No issues, no project board.
+>    > - **`single-issue`** - `pr-only` + issue lifecycle + canonical issue schema. Still no project board.
+>    > - **`full`** - `single-issue` + plan-to-issues, parallel validation, plan deprecation, cold-start, label taxonomy + native Issue Type.
 >
->    Write a `### Features` table under the active `## Project: <slug>` section in the config with the 12 booleans set per the chosen preset (see `local-config.md` for the per-preset matrix). The template's defaults already match `pr-only` — for `single-issue` flip `issue_schema` + `issue_lifecycle` to `true`; for `full` flip all of them to `true`.
+>    Write a `### Features` table under the active `## Project: <slug>` section in the config with the 12 booleans set per the chosen preset (see `local-config.md` for the per-preset matrix). The template's defaults already match `pr-only` - for `single-issue` flip `issue_schema` + `issue_lifecycle` to `true`; for `full` flip all of them to `true`.
 >
-> 7. **Fill the config.** Ask the user for every field in the active project section. For fields not used by the chosen preset (e.g. `project_url` and `sibling_repos` under `pr-only`), record `<not used: pr-only>` rather than leaving the placeholder — that way the value is unambiguous if the user later upgrades the preset.
+> 7. **Fill the config.** Ask the user for every field in the active project section. For fields not used by the chosen preset (e.g. `project_url` and `sibling_repos` under `pr-only`), record `<not used: pr-only>` rather than leaving the placeholder - that way the value is unambiguous if the user later upgrades the preset.
 >
 > 8. **Bootstrap.** Read `.agents/ctxr-dev/github-dev-methodology/index.md` and follow it. Honour the active features per the index preamble: never bootstrap a recipe whose `feature` is off, and never ask the user for config values that belong only to disabled features.
 
@@ -169,9 +169,9 @@ After install, every future session in this project picks up the methodology aut
 
 ## Why `.agents/` and `.gitignore`
 
-The methodology is its **own git repository** (cloned under `.agents/ctxr-dev/github-dev-methodology/`). The outer project must **not** track it — otherwise you get nested-`.git/` warnings, methodology updates appearing as foreign diffs in your PRs, and accidental commits of methodology content into your project.
+The methodology is its **own git repository** (cloned under `.agents/ctxr-dev/github-dev-methodology/`). The outer project must **not** track it - otherwise you get nested-`.git/` warnings, methodology updates appearing as foreign diffs in your PRs, and accidental commits of methodology content into your project.
 
-The `*.local.md` rule keeps the per-project config private to each developer — it holds project URLs, org names, reviewer preferences, and auto-discovered bot IDs.
+The `*.local.md` rule keeps the per-project config private to each developer: it holds project URLs, org names, the reviewer set (and required-approver subset), and auto-discovered bot IDs.
 
 ---
 
@@ -196,7 +196,7 @@ The `*.local.md` rule keeps the per-project config private to each developer —
 | Aider · Continue · Cline · Zed · Warp | ✅ | direct |
 | **Claude Code** | ❌ *(May 2026)* | via `@AGENTS.md` import in `CLAUDE.md` |
 
-The methodology docs themselves contain **no agent-specific tool names** — they describe capabilities ("read the file", "schedule a wake-up") that map to whatever primitives your agent harness provides.
+The methodology docs themselves contain **no agent-specific tool names**: they describe capabilities ("read the file", "block in the foreground until the review watch returns") that map to whatever primitives your agent harness provides. The optional `gh_pr_review_watch` MCP tool is vendor-neutral (any client calls it the same way); a no-MCP `scripts/pr-review-watch.mjs` fallback covers harnesses without it.
 
 ---
 
@@ -231,7 +231,7 @@ github-dev-methodology/
 
 <br/>
 
-Existing projects that installed the previous Claude-only layout can migrate manually. Use plain `mv` (not `git mv`) — the old paths were gitignored, so git doesn't know about them:
+Existing projects that installed the previous Claude-only layout can migrate manually. Use plain `mv` (not `git mv`) - the old paths were gitignored, so git doesn't know about them:
 
 ```sh
 mkdir -p .agents/ctxr-dev
@@ -239,7 +239,7 @@ mv .claude/memory/ctxr-dev .agents/ctxr-dev/github-dev-methodology
 mv .claude/memory/ctxr-dev.config.local.md .agents/ctxr-dev/github-dev-methodology.config.local.md
 ```
 
-Then rewire `AGENTS.md` per step 3 of the install, update `.gitignore` per step 2, and replace the old single-project table in your config with the new `## Active` + `## Project: <slug>` layout (see [`templates/config.local.md`](templates/config.local.md)). **Add a `### Features` block** to each project section (the parser treats any feature not listed as `false`, so start with the `full` preset if your old install used the whole methodology). **Drop the `polling_paradigm` row** if present — it's gone; polling is always foreground.
+Then rewire `AGENTS.md` per step 3 of the install, update `.gitignore` per step 2, and replace the old single-project table in your config with the new `## Active` + `## Project: <slug>` layout (see [`templates/config.local.md`](templates/config.local.md)). **Add a `### Features` block** to each project section (the parser treats any feature not listed as `false`, so start with the `full` preset if your old install used the whole methodology). **Drop the `polling_paradigm` row** if present - it's gone; polling is always foreground.
 
 </details>
 
@@ -249,6 +249,6 @@ Then rewire `AGENTS.md` per step 3 of the install, update `.gitignore` per step 
 
 Made by <a href="mailto:dmitri.meshin@gmail.com"><strong>Dmitri Meshin</strong></a>, distilled from real <a href="https://github.com/ctxr-dev">ctxr-dev</a> project work.
 
-<sub>MIT licensed — see <a href="LICENSE">LICENSE</a>.</sub>
+<sub>MIT licensed - see <a href="LICENSE">LICENSE</a>.</sub>
 
 </div>

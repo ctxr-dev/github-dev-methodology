@@ -1,6 +1,6 @@
 # Per-project local config
 
-The methodology stays project-agnostic. Per-project values live in a gitignored markdown file at `.agents/ctxr-dev/github-dev-methodology.config.local.md`. One file can track **one or many GitHub Projects** — useful when a single workspace participates in several boards.
+The methodology stays project-agnostic. Per-project values live in a gitignored markdown file at `.agents/ctxr-dev/github-dev-methodology.config.local.md`. One file can track **one or many GitHub Projects** - useful when a single workspace participates in several boards.
 
 Every project section also carries a `### Features` table that determines which methodology recipes the agent applies. Most projects don't need every feature, so the methodology is **opt-in per feature**, with three install presets (`pr-only` / `single-issue` / `full`) for the common shapes.
 
@@ -47,10 +47,14 @@ Every project section also carries a `### Features` table that determines which 
 
 | Key | Value |
 |---|---|
-| `default_reviewer` | `copilot` \| `<github-login>` \| `ask` |
+| `reviewers` | comma-separated INDIVIDUAL reviewer logins watched on every PR: `copilot`, `<github-login>`. The watch matches review-author logins, so a `<team-slug>` is never tracked (it would stay pending forever): you may still request a team for review, but list the member logins you expect to review here. Value `ask` triggers the first-run discovery + multi-select (see "How the agent reads it"). |
+| `required_reviewers` | subset of `reviewers` whose `APPROVED` gates the exit predicate (humans only; bots have no `APPROVED` state). May be empty. |
+| `pr_loop_wait_for` | `any` (default) \| `smart` \| `all` \| `quorum:N`. Selects which reviewer transitions wake the loop between cycles (does NOT relax the done predicate). |
 | `copilot_bot_id` | BOT_kgDOXXXXXX (per-installation; discover via commits.md snippet) |
-| `pr_loop_poll_seconds` | 300 (override default 5-min cadence) |
+| `pr_loop_poll_seconds` | 60 (override the default 60s cadence) |
 | `pr_loop_max_hours` | 24 (override default 24h max-no-progress) |
+
+> **Legacy `default_reviewer` is still honored as a one-element fallback** when `reviewers` is empty (doc/agent contract; nothing in the parser reads it, so the agent applies the fallback). Prefer `reviewers`; migrate old configs by moving the single value into the `reviewers` set.
 
 ### Dev-loop modes
 
@@ -66,10 +70,10 @@ Every project section also carries a `### Features` table that determines which 
 
 ## Project: <slug-2>
 
-... (duplicate the section above; H3 subsections are visual grouping only — the parser pulls keys from any table row under the `## Project: <slug>` H2)
+... (duplicate the section above; H3 subsections are visual grouping only - the parser pulls keys from any table row under the `## Project: <slug>` H2)
 ```
 
-`## Active` is parsed for the `active_project` key; that's the project used when no `--project` override is passed. Slugs are user-chosen labels (`my-app`, `web`, `infra`) — keep them short and shell-safe.
+`## Active` is parsed for the `active_project` key; that's the project used when no `--project` override is passed. Slugs are user-chosen labels (`my-app`, `web`, `infra`) - keep them short and shell-safe.
 
 > **Polling is always foreground.** There is no `polling_paradigm` flag any more (formerly `wakeup | background`); both options are gone. See [`pr-loop.md`](pr-loop.md)'s "Polling cadence" section.
 
@@ -83,7 +87,7 @@ Each row in the `### Features` table maps to one (and only one) topic doc. Flags
 | `copilot_review` | the Copilot-discovery + GraphQL `requestReviews` sections inside `commits.md` and `pr-loop.md`. Off → fall back to plain `gh pr edit --add-reviewer <login>`. |
 | `conventional_commits` | `commits.md` (commit message format spec) |
 | `agents_orchestration` | `agents-orchestration.md` (orchestrator + fresh-subagent pattern; universal) |
-| `audit_vs_execute` | `audit-vs-execute.md` (findings ≠ approval; PR merge is human-gated). **Disabling this removes the merge gate and bulk-edit safeguards — not recommended.** |
+| `audit_vs_execute` | `audit-vs-execute.md` (findings ≠ approval; PR merge is human-gated). **Disabling this removes the merge gate and bulk-edit safeguards - not recommended.** |
 | `issue_schema` | `issue-schema.md` (canonical issue body shape + validator contract) |
 | `issue_lifecycle` | `issue-lifecycle.md` (single-issue / single-PR flow) |
 | `label_taxonomy` | `label-taxonomy.md` (locked label families + native Issue Type mapping) |
@@ -148,7 +152,7 @@ The first line keeps the cloned methodology (its own `.git/`) from being tracked
 Three ways, in precedence order:
 
 1. **`--project <slug>`** passed to a validator script (highest precedence). Used per invocation.
-2. **Explicit instruction to the agent** — "use project `<slug>` for this session". The agent loads the named section and proceeds.
+2. **Explicit instruction to the agent** - "use project `<slug>` for this session". The agent loads the named section and proceeds.
 3. **`active_project` in the `## Active` section** (default). Used when nothing else is specified.
 
 ## How the agent reads it
@@ -158,6 +162,10 @@ At session start (or before any methodology recipe runs), the agent:
 1. Checks if `<project-root>/.agents/ctxr-dev/github-dev-methodology.config.local.md` exists.
 2. If yes: reads the file, resolves which project section to use (per the precedence above), parses the `### Features` table into a flag map, and holds the project's keys + feature map for the session.
 3. If no: creates it from `templates/config.local.md` and **asks the user** to (a) pick a preset (`pr-only` / `single-issue` / `full`), (b) fill in at least one `## Project: <slug>` section with the `active_project` pointer.
+4. **Reviewer-set discovery (one time, when `pr_loop` is on and `reviewers` is unset or `ask`).** As part of bootstrap, the agent discovers the candidate reviewers ONCE, asks the user to choose, and persists the result so no later step re-asks:
+   - **Discover candidates.** Copilot via the `suggestedReviewers` / `suggestedActors` surface (and, when found, capture `copilot_bot_id` per the [`commits.md`](commits.md) snippet); humans and teams via the repo's collaborators, `CODEOWNERS`, and `suggestedActors`.
+   - **Ask the user (multi-select)** which of those reviewers to request on EVERY PR, and which of the chosen humans MUST approve before merge.
+   - **Persist** the answer as `reviewers` (the full set), `required_reviewers` (the must-approve humans), and `copilot_bot_id` (if Copilot was chosen) in the active project's section. This is the only reviewer ask; [`pr-loop.md`](pr-loop.md) just reads the persisted set thereafter.
 
 ## Why markdown not JSON
 
@@ -172,7 +180,7 @@ The values are user- and machine-specific:
 
 - The org might differ if the user works in multiple orgs.
 - The Copilot bot ID is per-org-per-repo-installation.
-- The default reviewer is a personal preference.
+- The reviewer set is a per-project, often personal, preference.
 - Polling overrides may be opinion-driven.
 
 These shouldn't accidentally land in commits and propagate to other contributors.
@@ -199,8 +207,8 @@ The next session inherits the discovery.
 
 Different projects in the same org might have different conventions:
 
-- One project uses Copilot reviews; another uses a named human.
-- One project wants a 5-min poll; another wants 15-min.
+- One project uses Copilot reviews; another uses a named human plus a team.
+- One project wants a 60s poll; another wants 5-min.
 - One project runs `pr-only`; another runs `full` with a project board.
 
-Per-project sections let each board override defaults — including the feature set — without coordinating across the workspace.
+Per-project sections let each board override defaults - including the feature set - without coordinating across the workspace.
