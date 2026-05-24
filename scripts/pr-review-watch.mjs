@@ -46,7 +46,8 @@
 //                       between-cycle transitions are reported (does NOT relax done).
 //   --interval <sec>    poll cadence between cycles (default 60).
 //   --max-wait <sec>    give up after this many seconds (default: unlimited). Exit 2.
-//   --once              single snapshot; print state and exit (0 if all ready, else 3).
+//   --once              single snapshot; print state and exit. Exit codes: 0 all
+//                       ready, 1 a PR failed to fetch/evaluate, 3 not ready.
 //   --require-ci        require statusCheckRollup == SUCCESS for done.
 //   --json              emit JSON instead of human text (one object per reported
 //                       cycle: the first cycle, any --wait-for wake, and terminals).

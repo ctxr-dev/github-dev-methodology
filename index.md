@@ -1,4 +1,4 @@
-# github-dev-methodology — entry point
+# github-dev-methodology - entry point
 
 **ALWAYS read first** when picking up any task in a project that has imported this methodology. The order below is the recommended read order for cold-start.
 
@@ -7,7 +7,7 @@
 This methodology is **opt-in per feature**. The agent never bootstraps a recipe whose feature is off in the active project.
 
 1. Open `.agents/ctxr-dev/github-dev-methodology.config.local.md`.
-2. Resolve the active project (see [`local-config.md`](local-config.md) — `--project <slug>` flag > "use project X" instruction > `active_project` key).
+2. Resolve the active project (see [`local-config.md`](local-config.md) - `--project <slug>` flag > "use project X" instruction > `active_project` key).
 3. Read its `### Features` table into a feature map of the 12 flags. (See [`local-config.md`](local-config.md) for the full flag list and the 3 install presets.)
 4. For every topic file in the index below, parse the YAML frontmatter:
    - if `feature` is off in the map → **skip the file entirely**
@@ -61,16 +61,16 @@ If it doesn't exist, create one from [`templates/config.local.md`](templates/con
 Annotations: `feature: <flag>` (the flag that enables this file) · `in: <presets>` (which install presets enable it by default).
 
 1. [`pr-loop.md`](pr-loop.md) · `feature: pr_loop` · `in: pr-only, single-issue, full`. PR review loop. Watches a SET of reviewers (Copilot + humans + teams) from the persisted `reviewers` config. 60s default cadence (configurable), **foreground polling** (the agent keeps the loop in the foreground via the `gh_pr_review_watch` tool or the `scripts/pr-review-watch.mjs` long-poll; no callbacks, no wake-ups). 24h max. Exit predicate: every configured reviewer has re-reviewed HEAD and is green (no unresolved non-outdated thread authored by them) + required approvals present + CI green. ALWAYS resolve threads in the same push that fixes them.
-2. [`commits.md`](commits.md) · `feature: conventional_commits` · `in: pr-only, single-issue, full` — Conventional Commits 1.0. Reviewer-request via GraphQL `requestReviews` with `botIds` (the Copilot section is gated on `copilot_review`).
-3. [`agents-orchestration.md`](agents-orchestration.md) · `feature: agents_orchestration` · `in: pr-only, single-issue, full` — Default pattern for every non-trivial task: push focused work into fresh subagents; orchestrator holds only the plan, decisions, and compacted history. The umbrella that `parallel-validation.md` specialises.
-4. [`audit-vs-execute.md`](audit-vs-execute.md) · `feature: audit_vs_execute` · `in: pr-only, single-issue, full` — Investigation findings ≠ approval. Always pause for explicit user "go" before mutating artefacts. PR merge is human-gated.
-5. [`issue-schema.md`](issue-schema.md) · `feature: issue_schema` · `in: single-issue, full` — Canonical issue body shape. MUST-FOLLOW; validator hard-fails on missing sections.
-6. [`issue-lifecycle.md`](issue-lifecycle.md) · `feature: issue_lifecycle` · `in: single-issue, full` — Single-issue / single-PR flow: create issue → branch (status → `In progress`) → PR with `Closes #N` (status → `In review`) → wait → human merges + closes (status → `Done`) → bundling rules. The agent owns `In progress` and `In review`; the human owns `Done`, the merge, and the close.
-7. [`label-taxonomy.md`](label-taxonomy.md) · `feature: label_taxonomy` · `in: full` — Locked families (`type:*`, `scope:*`, `phase:*`, `release:*`) + project-extensible `area:*`. Cascade install across all repos in the project. Native Issue Type mapping (optional admin:org branch).
-8. [`plan-to-issues.md`](plan-to-issues.md) · `feature: plan_to_issues` · `in: full` — Recipe for turning a markdown plan into a wired native sub-issue tree on a GitHub Project. Every issue cold-start ready.
-9. [`parallel-validation.md`](parallel-validation.md) · `feature: parallel_validation` · `in: full` — After every plan migration, spawn 3 Plan agents (completeness / dep-graph / cold-start) SCOPED TO TOUCHED ISSUES ONLY. Token economy: don't audit untouched parts of the tree.
-10. [`plan-deprecation.md`](plan-deprecation.md) · `feature: plan_deprecation` · `in: full` — Once issues exist, the agent auto-minimizes the original plan file to title + 1-paragraph + epic link.
-11. [`cold-start.md`](cold-start.md) · `feature: cold_start` · `in: full` — How to pick up an issue with zero prior context. The 4-step warm-up sequence.
+2. [`commits.md`](commits.md) · `feature: conventional_commits` · `in: pr-only, single-issue, full` - Conventional Commits 1.0. Reviewer-request via GraphQL `requestReviews` with `botIds` (the Copilot section is gated on `copilot_review`).
+3. [`agents-orchestration.md`](agents-orchestration.md) · `feature: agents_orchestration` · `in: pr-only, single-issue, full` - Default pattern for every non-trivial task: push focused work into fresh subagents; orchestrator holds only the plan, decisions, and compacted history. The umbrella that `parallel-validation.md` specialises.
+4. [`audit-vs-execute.md`](audit-vs-execute.md) · `feature: audit_vs_execute` · `in: pr-only, single-issue, full` - Investigation findings ≠ approval. Always pause for explicit user "go" before mutating artefacts. PR merge is human-gated.
+5. [`issue-schema.md`](issue-schema.md) · `feature: issue_schema` · `in: single-issue, full` - Canonical issue body shape. MUST-FOLLOW; validator hard-fails on missing sections.
+6. [`issue-lifecycle.md`](issue-lifecycle.md) · `feature: issue_lifecycle` · `in: single-issue, full` - Single-issue / single-PR flow: create issue → branch (status → `In progress`) → PR with `Closes #N` (status → `In review`) → wait → human merges + closes (status → `Done`) → bundling rules. The agent owns `In progress` and `In review`; the human owns `Done`, the merge, and the close.
+7. [`label-taxonomy.md`](label-taxonomy.md) · `feature: label_taxonomy` · `in: full` - Locked families (`type:*`, `scope:*`, `phase:*`, `release:*`) + project-extensible `area:*`. Cascade install across all repos in the project. Native Issue Type mapping (optional admin:org branch).
+8. [`plan-to-issues.md`](plan-to-issues.md) · `feature: plan_to_issues` · `in: full` - Recipe for turning a markdown plan into a wired native sub-issue tree on a GitHub Project. Every issue cold-start ready.
+9. [`parallel-validation.md`](parallel-validation.md) · `feature: parallel_validation` · `in: full` - After every plan migration, spawn 3 Plan agents (completeness / dep-graph / cold-start) SCOPED TO TOUCHED ISSUES ONLY. Token economy: don't audit untouched parts of the tree.
+10. [`plan-deprecation.md`](plan-deprecation.md) · `feature: plan_deprecation` · `in: full` - Once issues exist, the agent auto-minimizes the original plan file to title + 1-paragraph + epic link.
+11. [`cold-start.md`](cold-start.md) · `feature: cold_start` · `in: full` - How to pick up an issue with zero prior context. The 4-step warm-up sequence.
 
 ## Validation scripts
 
@@ -85,7 +85,7 @@ node validate-labels.mjs <OWNER>
 node diff-plan.mjs <PLAN_FILE> <PROJECT_URL>
 ```
 
-Each script honours the per-project config at `<project-root>/.agents/ctxr-dev/github-dev-methodology.config.local.md` (read via the parser at `scripts/lib/config.mjs`). Scripts do NOT self-gate on features — running a validator manually is a deliberate user action. Skip a script if its underlying feature is off.
+Each script honours the per-project config at `<project-root>/.agents/ctxr-dev/github-dev-methodology.config.local.md` (read via the parser at `scripts/lib/config.mjs`). Scripts do NOT self-gate on features - running a validator manually is a deliberate user action. Skip a script if its underlying feature is off.
 
 ## Quick reference recipes (for when the agent is in a hurry)
 
@@ -96,4 +96,4 @@ Each script honours the per-project config at `<project-root>/.agents/ctxr-dev/g
 
 ## Source-of-truth contract
 
-When the `plan_to_issues` / `issue_lifecycle` features are on, GitHub Project + Issues are the source of truth for multi-issue work. Local plan files are session-scratch only; they get archived/minimized once their content is migrated to issues (see [`plan-deprecation.md`](plan-deprecation.md)). Under the `pr-only` preset, plan files stay local — there is no project tree to migrate to.
+When the `plan_to_issues` / `issue_lifecycle` features are on, GitHub Project + Issues are the source of truth for multi-issue work. Local plan files are session-scratch only; they get archived/minimized once their content is migrated to issues (see [`plan-deprecation.md`](plan-deprecation.md)). Under the `pr-only` preset, plan files stay local - there is no project tree to migrate to.

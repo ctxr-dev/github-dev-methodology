@@ -58,7 +58,7 @@ Until predicate (1) AND (2) AND (3) all hold, the PR is **NOT ready for merge**,
 
 ### Things that look like a valid pause but are NOT
 
-These are common false exits. None of them is permitted — every one of them leaves the user nudging the agent to keep going, which defeats the loop:
+These are common false exits. None of them is permitted - every one of them leaves the user nudging the agent to keep going, which defeats the loop:
 
 - ❌ **"I'll check back in a minute."** Returning control to the user between cycles. Not allowed; the loop must block in-process (re-invoke `gh_pr_review_watch`, or stay inside the long-poll script).
 - ❌ **Scheduling a wake-up / callback / cron and returning.** The harness's async wake-up primitives are NOT the polling mechanism. Use a foreground blocking watch (the tool or the long-poll script).
@@ -112,15 +112,21 @@ gh pr create \
 EOF
 )"
 
-# 4. Trigger review for the WHOLE configured set (humans + teams + Copilot) in one
-#    requestReviews call. botIds is REQUIRED for Copilot (REST silently no-ops on bots);
-#    userIds / teamIds carry the humans + teams. union:true preserves existing requests.
+# 4. Trigger review for the WHOLE configured set. PREFER the gh_pr_request_reviews
+#    MCP tool: it resolves logins to node ids (including the Copilot bot) and accepts
+#    user_logins / team_slugs / bot_logins arrays in ONE call. No-MCP gh-CLI fallback
+#    below: gh cannot pass a multi-value GraphQL list, so request each reviewer in a
+#    SEPARATE union:true call (union ADDS without removing prior requests; do NOT
+#    chain these mutations with && -- one bad id would abort the rest).
 PR_NUM=<number>
 PR_ID=$(gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){id}}}' \
   -f o=<OWNER> -f r=<REPO> -F n=$PR_NUM --jq '.data.repository.pullRequest.id')
-# Resolve the configured set to node ids: bot ids (Copilot), user ids (humans), team ids (teams).
-gh api graphql -f query='mutation($pid:ID!,$users:[ID!],$teams:[ID!],$bots:[ID!]){requestReviews(input:{pullRequestId:$pid,userIds:$users,teamIds:$teams,botIds:$bots,union:true}){pullRequest{reviewRequests(first:20){nodes{requestedReviewer{__typename ... on Bot{login} ... on User{login} ... on Team{slug}}}}}}}' \
-  -f pid="$PR_ID" -f users="$USER_IDS" -f teams="$TEAM_IDS" -f bots="$COPILOT_ID"
+COPILOT_ID=<BOT_kgDO... cached as copilot_bot_id, or discovered per commits.md>
+# Copilot via botIds (REST silently no-ops on bots, so GraphQL is REQUIRED):
+gh api graphql -f query='mutation($pid:ID!,$ids:[ID!]){requestReviews(input:{pullRequestId:$pid,botIds:$ids,union:true}){pullRequest{reviewRequests(first:1){totalCount}}}}' -f pid="$PR_ID" -f ids="$COPILOT_ID"
+# Each human: resolve login -> User node id, then request via userIds (repeat per login):
+HUMAN_ID=$(gh api graphql -f query='query($l:String!){user(login:$l){id}}' -f l=<human-login> --jq '.data.user.id')
+gh api graphql -f query='mutation($pid:ID!,$ids:[ID!]){requestReviews(input:{pullRequestId:$pid,userIds:$ids,union:true}){pullRequest{reviewRequests(first:1){totalCount}}}}' -f pid="$PR_ID" -f ids="$HUMAN_ID"
 
 # 5. Watch the set in the FOREGROUND until the exit predicate holds (default cadence 60s).
 #    DO NOT replace this with a wake-up tool or callback that returns control to the user.
@@ -187,5 +193,5 @@ Stop the loop and report to the user when:
 
 - **Never** force-push without explicit user authorization.
 - **Never** skip pre-commit / pre-push hooks (`--no-verify`).
-- **Never** merge yourself (`gh pr merge`) — merge is human-gated. See [`audit-vs-execute.md`](audit-vs-execute.md). User says "merge" / "ship it" / "go ahead" before any merge action.
+- **Never** merge yourself (`gh pr merge`) - merge is human-gated. See [`audit-vs-execute.md`](audit-vs-execute.md). User says "merge" / "ship it" / "go ahead" before any merge action.
 - Dependabot alerts + CI failures block the PR; address them before declaring exit predicate true.

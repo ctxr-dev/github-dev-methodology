@@ -1,6 +1,6 @@
 # Per-project local config
 
-The methodology stays project-agnostic. Per-project values live in a gitignored markdown file at `.agents/ctxr-dev/github-dev-methodology.config.local.md`. One file can track **one or many GitHub Projects** — useful when a single workspace participates in several boards.
+The methodology stays project-agnostic. Per-project values live in a gitignored markdown file at `.agents/ctxr-dev/github-dev-methodology.config.local.md`. One file can track **one or many GitHub Projects** - useful when a single workspace participates in several boards.
 
 Every project section also carries a `### Features` table that determines which methodology recipes the agent applies. Most projects don't need every feature, so the methodology is **opt-in per feature**, with three install presets (`pr-only` / `single-issue` / `full`) for the common shapes.
 
@@ -70,10 +70,10 @@ Every project section also carries a `### Features` table that determines which 
 
 ## Project: <slug-2>
 
-... (duplicate the section above; H3 subsections are visual grouping only — the parser pulls keys from any table row under the `## Project: <slug>` H2)
+... (duplicate the section above; H3 subsections are visual grouping only - the parser pulls keys from any table row under the `## Project: <slug>` H2)
 ```
 
-`## Active` is parsed for the `active_project` key; that's the project used when no `--project` override is passed. Slugs are user-chosen labels (`my-app`, `web`, `infra`) — keep them short and shell-safe.
+`## Active` is parsed for the `active_project` key; that's the project used when no `--project` override is passed. Slugs are user-chosen labels (`my-app`, `web`, `infra`) - keep them short and shell-safe.
 
 > **Polling is always foreground.** There is no `polling_paradigm` flag any more (formerly `wakeup | background`); both options are gone. See [`pr-loop.md`](pr-loop.md)'s "Polling cadence" section.
 
@@ -87,7 +87,7 @@ Each row in the `### Features` table maps to one (and only one) topic doc. Flags
 | `copilot_review` | the Copilot-discovery + GraphQL `requestReviews` sections inside `commits.md` and `pr-loop.md`. Off → fall back to plain `gh pr edit --add-reviewer <login>`. |
 | `conventional_commits` | `commits.md` (commit message format spec) |
 | `agents_orchestration` | `agents-orchestration.md` (orchestrator + fresh-subagent pattern; universal) |
-| `audit_vs_execute` | `audit-vs-execute.md` (findings ≠ approval; PR merge is human-gated). **Disabling this removes the merge gate and bulk-edit safeguards — not recommended.** |
+| `audit_vs_execute` | `audit-vs-execute.md` (findings ≠ approval; PR merge is human-gated). **Disabling this removes the merge gate and bulk-edit safeguards - not recommended.** |
 | `issue_schema` | `issue-schema.md` (canonical issue body shape + validator contract) |
 | `issue_lifecycle` | `issue-lifecycle.md` (single-issue / single-PR flow) |
 | `label_taxonomy` | `label-taxonomy.md` (locked label families + native Issue Type mapping) |
@@ -152,7 +152,7 @@ The first line keeps the cloned methodology (its own `.git/`) from being tracked
 Three ways, in precedence order:
 
 1. **`--project <slug>`** passed to a validator script (highest precedence). Used per invocation.
-2. **Explicit instruction to the agent** — "use project `<slug>` for this session". The agent loads the named section and proceeds.
+2. **Explicit instruction to the agent** - "use project `<slug>` for this session". The agent loads the named section and proceeds.
 3. **`active_project` in the `## Active` section** (default). Used when nothing else is specified.
 
 ## How the agent reads it
@@ -211,4 +211,4 @@ Different projects in the same org might have different conventions:
 - One project wants a 60s poll; another wants 5-min.
 - One project runs `pr-only`; another runs `full` with a project board.
 
-Per-project sections let each board override defaults — including the feature set — without coordinating across the workspace.
+Per-project sections let each board override defaults - including the feature set - without coordinating across the workspace.
