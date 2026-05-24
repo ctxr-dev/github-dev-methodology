@@ -221,8 +221,14 @@ const WATCH_QUERY = `query($o:String!,$r:String!,$n:Int!,$c:String){
 }`;
 
 function fetchPr(pr) {
-  // Fetch head + reviews + threads in the SAME query (avoid a head-vs-reviews race),
-  // paginating reviewThreads past the first 100.
+  // Fetch head + reviews + the first page of threads in ONE query so the head
+  // and the review set are consistent. Two known, accepted limits: (1)
+  // latestReviews(first:100) returns the latest review per author, so a PR with
+  // >100 DISTINCT review authors could push a watched reviewer's latest out of
+  // the window (they would read pending); not a real scenario for a small
+  // configured reviewer set. (2) Thread pagination below issues extra calls
+  // that could observe a newer push mid-pagination; that only delays a verdict
+  // by one cycle, since the next poll re-reads from the current head.
   // Omit `c` on the first request so $c is null (a valid "from the start"
   // cursor); an empty string is not a valid GraphQL cursor and can error.
   const first = ghGraphql(WATCH_QUERY, { o: pr.owner, r: pr.repo, n: pr.number });
@@ -444,9 +450,14 @@ async function main() {
         if (isWake(prev.get(label), ev, opts)) wake = true;
         prev.set(label, ev);
       } catch (err) {
-        // One bad PR must never kill the batch.
+        // One bad PR must never kill the batch. Track the error in `prev` like
+        // a state so a PERSISTENT error does not wake/report every cycle; only
+        // a newly-appeared or changed error wakes (mirrors the no-hot-loop rule).
+        const errState = `ERR:${err.message}`;
+        const prevEntry = prev.get(label);
+        if (!prevEntry || prevEntry.state !== errState) wake = true;
         results.push({ pr, error: err.message });
-        wake = true; // surface the error promptly rather than swallowing it
+        prev.set(label, { state: errState });
       }
     }
 
@@ -468,8 +479,10 @@ async function main() {
     }
     if (opts.once) {
       cleanup(onSignal);
-      // --once is a snapshot: exit 3 ("not ready yet") so callers can branch.
-      process.exit(3);
+      // --once is a snapshot. Distinguish a watch FAILURE (some PR errored)
+      // from a clean "not ready yet": 1 = an item failed to fetch/evaluate,
+      // 3 = not ready but no errors. (0 = all ready, handled above.)
+      process.exit(results.some((r) => r.error) ? 1 : 3);
     }
     if (interrupted) {
       console.error("pr-review-watch.mjs: interrupted; exiting.");
