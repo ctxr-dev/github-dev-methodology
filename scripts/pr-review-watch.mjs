@@ -5,11 +5,12 @@
 // gh_pr_review_watch tool: same predicate (latestReviews + unresolved-non-outdated
 // threads authored by the reviewer), computed with the gh CLI.
 //
-// This is a single long-running FOREGROUND process. It polls internally every
-// --interval seconds, holding last-seen per-reviewer state in memory (so it needs
-// no fingerprint and cannot hot-loop), and blocks until the watched PRs are done,
-// --max-wait elapses, or it is interrupted. It NEVER schedules a wake-up, forks to
-// the background, or returns control to the caller mid-watch.
+// This is a single long-running FOREGROUND process. It sleeps --interval seconds
+// BETWEEN cycles (so the real cadence is each cycle's fetch time plus --interval),
+// holding last-seen per-reviewer state in memory (so it needs no fingerprint and
+// cannot hot-loop), and blocks until the watched PRs are done, --max-wait elapses,
+// or it is interrupted. It NEVER schedules a wake-up, forks to the background, or
+// returns control to the caller mid-watch.
 //
 // Predicate (mirrors the mcp-github gh_pr_review_watch tool EXACTLY). Per configured
 // reviewer, take their latest review via the `latestReviews` connection, excluding
