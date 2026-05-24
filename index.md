@@ -8,7 +8,7 @@ This methodology is **opt-in per feature**. The agent never bootstraps a recipe 
 
 1. Open `.agents/ctxr-dev/github-dev-methodology.config.local.md`.
 2. Resolve the active project (see [`local-config.md`](local-config.md) - `--project <slug>` flag > "use project X" instruction > `active_project` key).
-3. Read its `### Features` table into a feature map of the 12 flags. (See [`local-config.md`](local-config.md) for the full flag list and the 3 install presets.)
+3. Read its `### Features` table into a feature map of the 13 flags. (See [`local-config.md`](local-config.md) for the full flag list and the 3 install presets.)
 4. For every topic file in the index below, parse the YAML frontmatter:
    - if `feature` is off in the map → **skip the file entirely**
    - if any name in `requires.features` is off → **skip the file entirely**
@@ -47,7 +47,7 @@ If the user can't grant `admin:org` (not an org admin), drop that scope and skip
 
 Before doing anything else, check whether `.agents/ctxr-dev/github-dev-methodology.config.local.md` exists in the project. It carries:
 
-- The `### Features` table (the 12 flags driving everything below).
+- The `### Features` table (the 13 flags driving everything below).
 - The active project values (owner, primary repo, sibling repos).
 - The project board URL (used only when board features are on).
 - The default code-review provider (Copilot, named human, or "ask").
@@ -62,7 +62,7 @@ Annotations: `feature: <flag>` (the flag that enables this file) · `in: <preset
 
 1. [`pr-loop.md`](pr-loop.md) · `feature: pr_loop` · `in: pr-only, single-issue, full`. PR review loop. Watches a SET of individual reviewer logins (Copilot + humans) from the persisted `reviewers` config; a team is requested for review but tracked via its member logins. 60s default cadence (configurable), **foreground polling** (the agent keeps the loop in the foreground via the `gh_pr_review_watch` tool or the `scripts/pr-review-watch.mjs` long-poll; no callbacks, no wake-ups). 24h max. Exit predicate: every configured reviewer has re-reviewed HEAD and is green (no unresolved non-outdated thread authored by them) + required approvals present + CI green. ALWAYS resolve threads in the same push that fixes them.
 2. [`commits.md`](commits.md) · `feature: conventional_commits` · `in: pr-only, single-issue, full` - Conventional Commits 1.0. Reviewer-request via GraphQL `requestReviews` with `botIds` (the Copilot section is gated on `copilot_review`).
-3. [`agents-orchestration.md`](agents-orchestration.md) · `feature: agents_orchestration` · `in: pr-only, single-issue, full` - Default pattern for every non-trivial task: push focused work into fresh subagents; orchestrator holds only the plan, decisions, and compacted history. The umbrella that `parallel-validation.md` specialises.
+3. [`agents-orchestration.md`](agents-orchestration.md) · `feature: agents_orchestration` · `in: pr-only, single-issue, full` - Default pattern for every non-trivial task: push focused work into fresh subagents; orchestrator holds only the plan, decisions, and compacted history. The umbrella that `parallel-validation.md` specialises. Also hosts the subagent tool-scoping discipline (always on) and the optional plan-review / conformance-review gates (gated by `subagent_review`, an inline section).
 4. [`audit-vs-execute.md`](audit-vs-execute.md) · `feature: audit_vs_execute` · `in: pr-only, single-issue, full` - Investigation findings ≠ approval. Always pause for explicit user "go" before mutating artefacts. PR merge is human-gated.
 5. [`issue-schema.md`](issue-schema.md) · `feature: issue_schema` · `in: single-issue, full` - Canonical issue body shape. MUST-FOLLOW; validator hard-fails on missing sections.
 6. [`issue-lifecycle.md`](issue-lifecycle.md) · `feature: issue_lifecycle` · `in: single-issue, full` - Single-issue / single-PR flow: create issue → branch (status → `In progress`) → PR with `Closes #N` (status → `In review`) → wait → human merges + closes (status → `Done`) → bundling rules. The agent owns `In progress` and `In review`; the human owns `Done`, the merge, and the close.

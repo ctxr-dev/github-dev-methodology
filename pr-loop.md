@@ -182,7 +182,7 @@ After every meaningful push that addresses a comment, re-request the WHOLE confi
 
 Stop the loop and report to the user when:
 
-- Exit predicate holds → success; ask user "ready to merge?".
+- Exit predicate holds → success; ask user "ready to merge?". When `subagent_review` is on, this is the merge-prep point where the optional conformance-review gate applies: offer a parallel-subagent review of the built work against the plan before declaring the PR ready (see [`agents-orchestration.md`](agents-orchestration.md), "Optional review gates").
 - 24 hours elapsed since the loop started → "stalled, no progress, please advise".
 - User explicitly says stop / changes course → obey.
 - Branch protection blocks the merge despite the predicate holding → escalate; this means the rule set is stricter than the methodology assumed.

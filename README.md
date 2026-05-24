@@ -50,7 +50,7 @@
 | 🧭 **Agents orchestration** | Default pattern for non-trivial work: push focused work into fresh subagents; orchestrator holds only plan + decisions + compacted history. |
 | 🔍 **Parallel validation** | After every plan migration, 3 audit agents (completeness / dep-graph / cold-start) scoped to TOUCHED issues only. |
 | 🗂️ **Plan deprecation** | Once issues exist, the original plan file is auto-minimized to title + 1-paragraph + epic link. |
-| 🎚️ **Opt-in features** | 3-tier preset (`pr-only` / `single-issue` / `full`) picked at install time. 12 individual flags you can flip later. No project board? Pick `pr-only` and the agent never touches issues, labels, or boards. |
+| 🎚️ **Opt-in features** | 3-tier preset (`pr-only` / `single-issue` / `full`) picked at install time. 13 individual flags you can flip later. No project board? Pick `pr-only` and the agent never touches issues, labels, or boards. |
 
 ---
 
@@ -157,7 +157,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    > - **`single-issue`** - `pr-only` + issue lifecycle + canonical issue schema. Still no project board.
 >    > - **`full`** - `single-issue` + plan-to-issues, parallel validation, plan deprecation, cold-start, label taxonomy + native Issue Type.
 >
->    Write a `### Features` table under the active `## Project: <slug>` section in the config with the 12 booleans set per the chosen preset (see `local-config.md` for the per-preset matrix). The template's defaults already match `pr-only` - for `single-issue` flip `issue_schema` + `issue_lifecycle` to `true`; for `full` flip all of them to `true`.
+>    Write a `### Features` table under the active `## Project: <slug>` section in the config with the 13 booleans set per the chosen preset (see `local-config.md` for the per-preset matrix). The template's defaults already match `pr-only` - for `single-issue` flip `issue_schema` + `issue_lifecycle` + `subagent_review` to `true`; for `full` flip all of them to `true`.
 >
 > 7. **Fill the config.** Ask the user for every field in the active project section. For fields not used by the chosen preset (e.g. `project_url` and `sibling_repos` under `pr-only`), record `<not used: pr-only>` rather than leaving the placeholder - that way the value is unambiguous if the user later upgrades the preset.
 >

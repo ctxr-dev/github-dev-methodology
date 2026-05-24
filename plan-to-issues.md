@@ -9,6 +9,8 @@ requires:
 
 The canonical 10-step recipe for taking a markdown plan file and migrating its content into a wired native sub-issue tree on a GitHub Project.
 
+When `subagent_review` is on, the optional plan-review gate applies BEFORE the plan is confirmed for migration: offer a parallel-subagent review of the plan (gaps, divergences, blind spots) and fold the findings in first (see [`agents-orchestration.md`](agents-orchestration.md), "Optional review gates"). The post-migration audit at Step 10 is the conformance analogue for the issue tree this recipe produces.
+
 ## Outcome
 
 After this recipe runs:

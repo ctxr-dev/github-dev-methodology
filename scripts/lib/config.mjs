@@ -27,6 +27,7 @@ export const FEATURE_NAMES = Object.freeze([
   "parallel_validation",
   "plan_deprecation",
   "cold_start",
+  "subagent_review",
 ]);
 
 function parseBool(s) {

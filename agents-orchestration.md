@@ -146,6 +146,32 @@ For a non-trivial fix: Investigate → Plan → Implement → Review as four seq
 
 Default is fresh subagents per spawn (no carried context). The exception is a single short follow-up to an investigator already in flight: continuing that agent (Claude Code: `SendMessage`) is cheaper than re-briefing a new one. Use sparingly; the default is still fresh.
 
+## Subagent tool scoping (keep fan-out alive)
+
+The whole fan-out discipline rests on subagents actually spawning. One mis-shaped tool can silently kill all of them at once, so scoping is not optional polish; it is what keeps the pattern working.
+
+**Failure mode.** The Anthropic tool-use API rejects `oneOf` / `allOf` / `anyOf` at the TOP LEVEL of a tool's `input_schema` (the same combinator nested inside a property is fine). A subagent's init advertises its whole tool surface in ONE request, so a single tool that carries a top-level combinator fails the WHOLE request. Every subagent type then dies at once, and silently: the fan-out just stops happening, with no obvious error to trace back to the offending tool.
+
+**Rule: read-only fan-out agents declare a least-privilege allowlist, never "all tools".** Explore, plan, and review agents MUST declare an explicit `tools:` allowlist (Read, Grep, Glob, Bash; add WebFetch / WebSearch only when they need to pull docs) and MUST NOT inherit the full "all tools" surface. An agent that advertises only those built-ins carries no MCP connector schema in its init request, so it is immune to the failure mode by construction: there is no third-party schema present to be malformed.
+
+**MCP servers you own vs. connectors you do not.** For an MCP server you control, strip top-level combinators from the ADVERTISED schema while keeping call-time validation intact, so the public surface is flat but every call is still checked. That is the pattern `mcp-github` uses (`src/registry.ts` plus `src/validation/advertise.ts`): advertise a flattened schema, enforce the full schema when the tool runs. For a third-party connector you cannot edit, disable the unused ones rather than exposing them to fan-out agents.
+
+**Scoped agents already exist for this.** The read-only project agents `ctxr-explore`, `ctxr-plan-reviewer`, and `ctxr-conformance-reviewer` (Claude Code project agents under `.claude/agents/`) are scoped to exactly such an allowlist. Use them for fan-out; they are the durable, immune-by-construction path.
+
+## Optional review gates
+
+> **Skip this section if `subagent_review` is off in the active project.**
+
+Two OPT-IN checkpoints where the orchestrator OFFERS a parallel-subagent review by ASKING the user, and proceeds only if they accept. The user may decline at each gate, and the work continues as normal. The gates are reviews, not background work: run them in the foreground when accepted, then continue.
+
+**Gate 1: plan-review at confirmation.** Before confirming a non-trivial plan (on Claude Code, before `ExitPlanMode`), ask the user whether to run a parallel plan-review. If they accept, fan out 2-3 `ctxr-plan-reviewer` agents over the PLAN with disjoint lenses (gaps, divergences from the user's intent, blind spots, edge cases, infeasibilities, missed files or steps). Fold the findings into the plan, revise it, then confirm.
+
+**Gate 2: conformance-review after implementation.** Before declaring the work done (at merge-prep), ask the user whether to run a parallel conformance-review. If they accept, fan out `ctxr-conformance-reviewer` agents to check the BUILT work against the plan (missed items, divergences from locked decisions, cross-implementation parity). Fold the findings, then fix-or-accept each.
+
+Both gates use the scoped read-only agents from the tool-scoping section above, so they stay immune to the connector failure mode. The post-migration issue-tree audit in [`parallel-validation.md`](parallel-validation.md) is a specialization of the same fan-out-and-audit idea (a fixed three-agent recipe scoped to touched issues); these gates are the general plan-vs-work form of it.
+
+This section is about reviews only. It does NOT change the foreground-only, no-background polling discipline: the gates add an optional review step, not any new polling or wake-up behaviour.
+
 ## Why this matters
 
 Without this pattern, the orchestrator's context grows linearly with every tool call, every exploration result, every diff. By round 3 it has lost the plot — recommendations start to drift, decisions get re-asked, and the harness eventually compacts under pressure (which is lossier than a hand-written summary).
