@@ -425,6 +425,13 @@ function printJson(results, elapsed, done) {
 
 function sleep(seconds, signal) {
   return new Promise((resolve) => {
+    // If the abort already fired before we got here, exit immediately so a
+    // SIGINT/SIGTERM that arrives just before sleep() does not wait a full
+    // interval before shutdown.
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
     const t = setTimeout(resolve, seconds * 1000);
     if (signal) {
       signal.addEventListener(
