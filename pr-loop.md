@@ -70,7 +70,7 @@ If a single cycle reports no progress, the agent re-arms the watch (re-invoke th
 
 ## Reviewer set (read from config; discovery happens once at bootstrap)
 
-The loop triggers and watches a SET of reviewers, persisted in the per-project config as `reviewers` (a comma-separated set of `copilot` / `<github-login>` / `<team-slug>`). The subset whose `APPROVED` gates the exit predicate is `required_reviewers` (humans only).
+The loop triggers reviews for, and watches, a SET of reviewers persisted in the per-project config as `reviewers`. The watch matches individual review-author logins (`copilot` / `<github-login>`), so list individual logins there: a team may be requested for review, but it is tracked via the member logins who actually review (a bare `<team-slug>` would stay pending forever). The subset whose `APPROVED` gates the exit predicate is `required_reviewers` (humans only).
 
 Order of precedence when assembling the set for this run:
 

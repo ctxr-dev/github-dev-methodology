@@ -47,7 +47,7 @@ Every project section also carries a `### Features` table that determines which 
 
 | Key | Value |
 |---|---|
-| `reviewers` | comma-separated set requested on every PR: `copilot`, `<github-login>`, `<team-slug>`. Value `ask` triggers the first-run discovery + multi-select (see "How the agent reads it"). |
+| `reviewers` | comma-separated INDIVIDUAL reviewer logins watched on every PR: `copilot`, `<github-login>`. The watch matches review-author logins, so a `<team-slug>` is never tracked (it would stay pending forever): you may still request a team for review, but list the member logins you expect to review here. Value `ask` triggers the first-run discovery + multi-select (see "How the agent reads it"). |
 | `required_reviewers` | subset of `reviewers` whose `APPROVED` gates the exit predicate (humans only; bots have no `APPROVED` state). May be empty. |
 | `pr_loop_wait_for` | `any` (default) \| `smart` \| `all` \| `quorum:N`. Selects which reviewer transitions wake the loop between cycles (does NOT relax the done predicate). |
 | `copilot_bot_id` | BOT_kgDOXXXXXX (per-installation; discover via commits.md snippet) |

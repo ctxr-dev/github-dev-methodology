@@ -33,20 +33,23 @@
 //
 // Args:
 //   --pr owner/name#N   repeatable; at least one required.
-//   --reviewer <login>  repeatable; at least one required. Alias `copilot` expands to
-//                       `copilot-pull-request-reviewer`.
+//   --reviewer <login>  repeatable; at least one required. INDIVIDUAL user/bot logins
+//                       only (alias `copilot` -> `copilot-pull-request-reviewer`). A
+//                       team slug never matches a review author and would stay pending
+//                       forever, so watch a team via its member logins.
 //   --required <login>  repeatable; subset of reviewers whose APPROVED gates done
 //                       (humans only; bots have no APPROVED state). Default: the
 //                       human reviewers (every --reviewer except the copilot bot).
 //   --no-required       gate done on NO approvals (advisory-only humans). Mutually
 //                       exclusive with --required.
-//   --wait-for <mode>   any (default) | smart | all | quorum:N. Selects which wake
-//                       transitions return control between cycles (does NOT relax done).
+//   --wait-for <mode>   any (default) | smart | all | quorum:N. Selects which
+//                       between-cycle transitions are reported (does NOT relax done).
 //   --interval <sec>    poll cadence between cycles (default 60).
 //   --max-wait <sec>    give up after this many seconds (default: unlimited). Exit 2.
 //   --once              single snapshot; print state and exit (0 if all ready, else 3).
 //   --require-ci        require statusCheckRollup == SUCCESS for done.
-//   --json              emit one JSON object per cycle instead of human text.
+//   --json              emit JSON instead of human text (one object per reported
+//                       cycle: the first cycle, any --wait-for wake, and terminals).
 
 import { ghGraphql } from "./lib/gh.mjs";
 
@@ -158,9 +161,13 @@ function parsePrSpec(spec) {
 }
 
 function normalizeReviewer(login) {
-  const v = login.trim();
+  // Canonicalise to lowercase: GitHub logins are case-insensitive and
+  // matching later (sameLogin) is too, so dedup + subset validation must
+  // be case-insensitive as well, or `--reviewer Alice --required alice`
+  // would wrongly error and `Alice`/`alice` would count as two reviewers.
+  const v = login.trim().toLowerCase();
   if (v === "") usage("empty reviewer login");
-  return v.toLowerCase() === "copilot" ? COPILOT_LOGIN : v;
+  return v === "copilot" ? COPILOT_LOGIN : v;
 }
 
 function setWaitFor(opts, raw) {
@@ -206,7 +213,9 @@ const WATCH_QUERY = `query($o:String!,$r:String!,$n:Int!,$c:String){
 function fetchPr(pr) {
   // Fetch head + reviews + threads in the SAME query (avoid a head-vs-reviews race),
   // paginating reviewThreads past the first 100.
-  const first = ghGraphql(WATCH_QUERY, { o: pr.owner, r: pr.repo, n: pr.number, c: "" });
+  // Omit `c` on the first request so $c is null (a valid "from the start"
+  // cursor); an empty string is not a valid GraphQL cursor and can error.
+  const first = ghGraphql(WATCH_QUERY, { o: pr.owner, r: pr.repo, n: pr.number });
   const node = first.data?.repository?.pullRequest;
   if (!node) throw new Error(`PR not found: ${pr.owner}/${pr.repo}#${pr.number}`);
   const threads = [...node.reviewThreads.nodes];
@@ -299,7 +308,7 @@ function evaluatePr(raw, opts) {
     state: reviewers
       .map((r) => `${r.login}:${r.onHead ? raw.head : "-"}:${r.verdict}`)
       .sort()
-      .join("|") + `|ci:${raw.ci ?? "-"}`,
+      .join("|") + `|head:${raw.head}|ci:${raw.ci ?? "-"}`,
   };
 }
 
@@ -428,8 +437,13 @@ async function main() {
       results.length > 0 && results.every((r) => r.ev && r.ev.ready);
     const elapsed = Math.round((Date.now() - start) / 1000);
 
-    if (opts.json) printJson(results, elapsed, allReady);
-    else printHuman(results, elapsed);
+    // Report on a wake transition (selected by --wait-for), the first
+    // (baseline) cycle, or a terminal state; steady-state no-change cycles
+    // stay silent, which is exactly what --wait-for selects.
+    if (wake || cycle === 1 || allReady || opts.once) {
+      if (opts.json) printJson(results, elapsed, allReady);
+      else printHuman(results, elapsed);
+    }
 
     if (allReady) {
       cleanup(onSignal);
@@ -453,11 +467,9 @@ async function main() {
       process.exit(2);
     }
 
-    // `wake` selects which transitions are worth a between-cycle report; it never
-    // shortens the sleep here (this is a single long-poll, not a re-invoked tool),
-    // but it is the same signal a fingerprint-driven caller would key on.
-    void wake;
-
+    // `wake` gated the report above; it never shortens the sleep here (this
+    // is a single long-poll, not a re-invoked tool). The poll cadence is
+    // always --interval.
     await sleep(opts.interval, ac.signal);
     if (interrupted) {
       console.error("pr-review-watch.mjs: interrupted; exiting.");

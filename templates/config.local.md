@@ -52,7 +52,7 @@ Fields unused by the current feature set may be left as `<not used: pr-only>` (o
 
 | Key | Value |
 |---|---|
-| `reviewers` | <comma-separated set: `copilot`, `<github-login>`, `<team-slug>`; or `ask` for first-run discovery> |
+| `reviewers` | <comma-separated INDIVIDUAL logins watched per PR: `copilot`, `<github-login>` (a `<team-slug>` is not tracked by the watch, list members instead); or `ask` for first-run discovery> |
 | `required_reviewers` | <subset of `reviewers` whose APPROVED gates merge; humans only; may be empty> |
 | `pr_loop_wait_for` | <one of: `any` (default), `smart`, `all`, `quorum:N`> |
 | `copilot_bot_id` | <auto-discovered after first PR; e.g. `BOT_kgDOXXXXXX`> |
