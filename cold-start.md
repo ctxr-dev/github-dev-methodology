@@ -18,7 +18,7 @@ Open `.agents/ctxr-dev/github-dev-methodology.config.local.md` (the per-project 
 - `<PROJECT_URL>` — the project board.
 - `<OWNER>` — the GitHub org.
 - `<REPO>` (and any sibling repos involved).
-- `reviewers`: the set requested on every PR (Copilot / named humans / teams); plus `required_reviewers` (the must-approve humans). Legacy `default_reviewer` is honored as a one-element fallback.
+- `reviewers`: the set watched on every PR (Copilot / individual human logins; a team is requested for review but tracked via its member logins, since the watch matches individual review authors); plus `required_reviewers` (the must-approve humans). Legacy `default_reviewer` is honored as a one-element fallback.
 - Any per-project overrides for cadence / max-duration / poll interval (`pr_loop_poll_seconds` default 60, `pr_loop_max_hours`, `pr_loop_wait_for`).
 
 If the file is missing, halt and ask the user to populate it from `templates/config.local.md` before proceeding.

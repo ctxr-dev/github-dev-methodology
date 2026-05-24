@@ -13,7 +13,7 @@ For the broader issue → branch → PR → close flow that wraps this loop, see
 
 ## Exit predicate
 
-The loop watches a SET of reviewers (Copilot + named humans + teams; see "Reviewer set" below), not a single reviewer. It terminates iff ALL three hold:
+The loop watches a SET of reviewers (Copilot + named humans; see "Reviewer set" below), not a single reviewer. (A team can be REQUESTED for review, but the watch matches individual review-author logins, so a team is tracked via its member logins, never a bare team slug.) It terminates iff ALL three hold:
 
 1. **Every CONFIGURED reviewer has re-reviewed the current HEAD and is green.** Per reviewer, take their latest review via the `latestReviews` connection, EXCLUDING `DISMISSED` and `PENDING` states, then:
    - `pending`: no such review whose `commit.oid == <HEAD SHA>` (they have not reached HEAD yet).
@@ -22,10 +22,10 @@ The loop watches a SET of reviewers (Copilot + named humans + teams; see "Review
 
    The exit signal is **reviewer-re-reviewed-HEAD plus no unresolved, non-outdated thread authored by that reviewer**, NOT `review.comments.totalCount`. That field undercounts (it omits replies) and misses Copilot's thread-based findings (Copilot is always `COMMENTED` and can carry a non-empty summary with zero inline comments), so it is the wrong signal. Use the per-reviewer unresolved-non-outdated-thread count instead. Check via:
    ```graphql
-   latestReviews(first:30) { nodes { author { login } state commit { oid } } }
+   latestReviews(first:100) { nodes { author { login } state commit { oid } } }
    reviewThreads(first:100) { nodes { isResolved isOutdated comments(first:1) { nodes { author { login } } } } }
    ```
-2. **Every required-approver is `APPROVED`.** The required set = configured `required_reviewers` (humans only; bots have no `APPROVED` state) + CODEOWNERS hits on changed paths. A green human in the required set must also be `APPROVED`, so an "all-green / zero-approvals" state does not slip past branch protection.
+2. **Every required-approver is `APPROVED`.** The required set = configured `required_reviewers` (humans only; bots have no `APPROVED` state). The watcher does NOT auto-expand CODEOWNERS: if a project relies on CODEOWNERS, the agent resolves the owners for the changed paths itself and includes them in the required set it passes (config `required_reviewers`, or the script's `--required`). A green human in the required set must also be `APPROVED`, so an "all-green / zero-approvals" state does not slip past branch protection.
 3. **CI status: success** for the head SHA. `statusCheckRollup` is null when the repo has no checks; treat null as "no CI gate" unless the project sets `require-ci`, in which case null fails with a clear reason.
 
 Otherwise: keep iterating.

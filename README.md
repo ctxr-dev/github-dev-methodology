@@ -41,7 +41,7 @@
 
 | Capability | What it does |
 |---|---|
-| 🔁 **PR review loop** | Watches a SET of reviewers (Copilot + humans + teams). Explicit exit predicate (every configured reviewer re-reviewed HEAD and green · no unresolved non-outdated thread by them · required approvals · CI green). Foreground watch, 60s default cadence, 24h max. |
+| 🔁 **PR review loop** | Watches a SET of reviewers (Copilot + individual humans; a team is requested for review but tracked via its member logins). Explicit exit predicate (every configured reviewer re-reviewed HEAD and green · no unresolved non-outdated thread by them · required approvals · CI green). Foreground watch, 60s default cadence, 24h max. |
 | 📋 **Plan → Issues** | Turn a markdown plan into a wired native sub-issue tree on a GitHub Project. Every issue cold-start ready. |
 | 🎯 **Issue lifecycle** | Single-issue / single-PR flow. Agent owns `In progress` and `In review`; human owns `Done`, merge, close. |
 | 📐 **Canonical issue schema** | Metadata header + Why + Action items + Acceptance + Implementation pointers + Test plan. Validator hard-fails on missing sections. |

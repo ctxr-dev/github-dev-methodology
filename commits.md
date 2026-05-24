@@ -40,7 +40,7 @@ Closes: ctxr-dev/agent-staff-engineer#52
 
 ## Reviewer auto-discovery + request
 
-> **Skip this entire section if `copilot_review` is off in the active project.** The methodology then falls back to plain `gh pr edit --add-reviewer <login>` against the humans/teams in the `reviewers` set (legacy `default_reviewer` honored as a one-element fallback), with no auto-discovery and no GraphQL `requestReviews` mutation.
+> **Skip this entire section if `copilot_review` is off in the active project.** The methodology then falls back to plain `gh pr edit --add-reviewer <login>` against the individual logins in the `reviewers` set (legacy `default_reviewer` honored as a one-element fallback), with no auto-discovery and no GraphQL `requestReviews` mutation. A team may be requested for review, but the watch tracks individual review authors, so list member logins in `reviewers`.
 
 The PR loop ([`pr-loop.md`](pr-loop.md)) requires triggering a code review after every push. The mechanism depends on the reviewer.
 
@@ -94,8 +94,8 @@ gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$
 If Copilot isn't on the repo:
 
 1. Check `.agents/ctxr-dev/github-dev-methodology.config.local.md` for the `reviewers` set (legacy `default_reviewer` is honored as a one-element fallback). If non-empty, use it.
-2. If empty, ASK the user which human reviewer(s)/team(s) to use (and write the answer back to the config as `reviewers` + `required_reviewers`).
-3. Request each human/team via standard REST (works for human users):
+2. If empty, ASK the user which individual reviewer login(s) to use (for a team, ask for the member logins you expect to review, not the bare team slug, since the watch tracks individual review authors), and write the answer back to the config as `reviewers` + `required_reviewers` (required approvers must be human user logins).
+3. Request each reviewer via standard REST (works for human users; a team can be added here for notification, but watch its members):
    ```bash
    gh pr edit <num> --repo <OWNER>/<REPO> --add-reviewer <login> [--add-reviewer <login2>]
    ```

@@ -136,6 +136,16 @@ function parseArgs(argv) {
   for (const r of opts.required) {
     if (!reviewerSet.has(r)) usage(`--required ${r} is not in the --reviewer set`);
   }
+  // A bot can never reach APPROVED, so requiring its approval makes the
+  // watch un-ready forever. Reject the known Copilot bot in --required.
+  if (opts.required.includes(COPILOT_LOGIN)) {
+    usage(`--required cannot include a bot (${COPILOT_LOGIN} has no APPROVED state, so the watch would never be ready)`);
+  }
+  // A quorum larger than the reviewer set can never be met (only all-ready
+  // would ever fire), which is surprising; fail fast.
+  if (opts.waitFor === "quorum" && opts.quorum > opts.reviewers.length) {
+    usage(`--wait-for quorum:${opts.quorum} exceeds the reviewer count (${opts.reviewers.length})`);
+  }
   if (opts.noRequired && opts.required.length > 0) {
     usage("--no-required cannot be combined with --required");
   }
@@ -200,7 +210,7 @@ const WATCH_QUERY = `query($o:String!,$r:String!,$n:Int!,$c:String){
     pullRequest(number:$n){
       headRefOid
       reviewDecision
-      latestReviews(first:30){nodes{author{login} state commit{oid} submittedAt}}
+      latestReviews(first:100){nodes{author{login} state commit{oid} submittedAt}}
       reviewThreads(first:100,after:$c){
         pageInfo{hasNextPage endCursor}
         nodes{isResolved isOutdated comments(first:1){nodes{author{login}}}}
@@ -305,8 +315,15 @@ function evaluatePr(raw, opts) {
     actionable,
     ready,
     // Stable per-PR state string: feeds in-process wake detection (no hashing needed).
+    // Include review.state and the unresolved count, not just verdict, so a
+    // meaningful transition that leaves the verdict unchanged still registers
+    // (e.g. a required reviewer COMMENTED -> APPROVED, or the open-thread
+    // count changing while still needs-work).
     state: reviewers
-      .map((r) => `${r.login}:${r.onHead ? raw.head : "-"}:${r.verdict}`)
+      .map(
+        (r) =>
+          `${r.login}:${r.onHead ? raw.head : "-"}:${r.verdict}:${r.state ?? "-"}:${r.unresolvedByReviewer}`
+      )
       .sort()
       .join("|") + `|head:${raw.head}|ci:${raw.ci ?? "-"}`,
   };
