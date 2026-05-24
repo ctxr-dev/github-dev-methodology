@@ -211,12 +211,26 @@ const WATCH_QUERY = `query($o:String!,$r:String!,$n:Int!,$c:String){
     pullRequest(number:$n){
       headRefOid
       reviewDecision
-      latestReviews(first:100){nodes{author{login} state commit{oid} submittedAt}}
+      latestReviews(first:100){nodes{author{login} state commit{oid}}}
       reviewThreads(first:100,after:$c){
         pageInfo{hasNextPage endCursor}
         nodes{isResolved isOutdated comments(first:1){nodes{author{login}}}}
       }
       commits(last:1){nodes{commit{statusCheckRollup{state}}}}
+    }
+  }
+}`;
+
+// Lightweight follow-up for thread pagination: fetches ONLY the next page of
+// reviewThreads, not the header (head/reviews/CI), so paging a PR with many
+// threads does not re-fetch the header on every page.
+const THREADS_QUERY = `query($o:String!,$r:String!,$n:Int!,$c:String){
+  repository(owner:$o,name:$r){
+    pullRequest(number:$n){
+      reviewThreads(first:100,after:$c){
+        pageInfo{hasNextPage endCursor}
+        nodes{isResolved isOutdated comments(first:1){nodes{author{login}}}}
+      }
     }
   }
 }`;
@@ -238,7 +252,7 @@ function fetchPr(pr) {
   const threads = [...node.reviewThreads.nodes];
   let page = node.reviewThreads.pageInfo;
   while (page.hasNextPage) {
-    const r = ghGraphql(WATCH_QUERY, {
+    const r = ghGraphql(THREADS_QUERY, {
       o: pr.owner,
       r: pr.repo,
       n: pr.number,
@@ -264,6 +278,16 @@ function sameLogin(a, b) {
 
 function evaluatePr(raw, opts) {
   const requiredSet = new Set(opts.required.map((r) => r.toLowerCase()));
+  // One pass over threads: lowercased author login -> unresolved, non-outdated
+  // count, so per-reviewer lookup is O(1) instead of O(reviewers * threads).
+  const unresolvedCounts = {};
+  for (const t of raw.threads) {
+    if (t.isResolved !== false || t.isOutdated !== false) continue;
+    const author = t.comments?.nodes?.[0]?.author?.login;
+    if (!author) continue;
+    const k = author.toLowerCase();
+    unresolvedCounts[k] = (unresolvedCounts[k] ?? 0) + 1;
+  }
   const reviewers = opts.reviewers.map((login) => {
     // Latest review by this reviewer, excluding DISMISSED/PENDING (per the locked model).
     const review = raw.latestReviews.find(
@@ -273,13 +297,7 @@ function evaluatePr(raw, opts) {
         rv.state !== "PENDING"
     );
     const onHead = !!review && review.commit?.oid === raw.head;
-    // Unresolved, non-outdated threads whose first comment author is this reviewer.
-    const unresolvedByReviewer = raw.threads.filter(
-      (t) =>
-        t.isResolved === false &&
-        t.isOutdated === false &&
-        sameLogin(t.comments?.nodes?.[0]?.author?.login, login)
-    ).length;
+    const unresolvedByReviewer = unresolvedCounts[login.toLowerCase()] ?? 0;
 
     let verdict;
     if (!onHead) {
