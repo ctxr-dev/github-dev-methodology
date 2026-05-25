@@ -17,8 +17,8 @@ This keeps the orchestrator's working context roughly constant in size regardles
 flowchart TD
   U[User] -- "task" --> O["Orchestrator<br/>holds: plan + decisions + compacted history<br/>does NOT do the deep work itself"]
 
-  O -- "self-contained brief" --> E1["Explore subagent<br/>(fresh context)"]
-  O -- "self-contained brief" --> E2["Explore subagent<br/>(fresh context)"]
+  O -- "self-contained brief" --> E1["ctxr-agent-codebase-explorer<br/>(fresh context)"]
+  O -- "self-contained brief" --> E2["ctxr-agent-codebase-explorer<br/>(fresh context)"]
   O -- "self-contained brief" --> P["Plan subagent<br/>(fresh context)"]
   O -- "self-contained brief" --> I["Implement subagent<br/>(fresh context)"]
   O -- "self-contained brief" --> R["Review subagent<br/>(fresh context)"]
@@ -110,7 +110,7 @@ This pattern is more reliable than waiting for the harness to compact — the or
 
 ### Planning a non-trivial change
 
-1. Orchestrator spawns 2-3 Explore subagents **in parallel** with disjoint scopes.
+1. Orchestrator spawns 2-3 `ctxr-agent-codebase-explorer` subagents **in parallel** with disjoint scopes.
 2. Each returns a capped report.
 3. Orchestrator collapses each into 3-5 takeaways in the plan file.
 4. Orchestrator spawns 1-2 Plan subagents briefed with the consolidated takeaways.
@@ -156,7 +156,13 @@ The whole fan-out discipline rests on subagents actually spawning. One mis-shape
 
 **MCP servers you own vs. connectors you do not.** For an MCP server you control, strip top-level combinators from the ADVERTISED schema while keeping call-time validation intact, so the public surface is flat but every call is still checked. That is the pattern `mcp-github` uses (`src/registry.ts` plus `src/validation/advertise.ts`): advertise a flattened schema, enforce the full schema when the tool runs. For a third-party connector you cannot edit, disable the unused ones rather than exposing them to fan-out agents.
 
-**Scoped agents already exist for this.** The read-only project agents `ctxr-explore`, `ctxr-plan-reviewer`, and `ctxr-conformance-reviewer` (Claude Code project agents under `.claude/agents/`) are scoped to exactly such an allowlist. Use them for fan-out; they are the durable, immune-by-construction path.
+**Scoped agents already exist for this.** The read-only agents `ctxr-agent-codebase-explorer`, `ctxr-agent-plan-reviewer`, and `ctxr-agent-implementation-auditor` are scoped to exactly such an allowlist. Install them once via `@ctxr/kit` so they load in every session and project:
+
+```bash
+npx @ctxr/kit install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
+```
+
+Use them for fan-out; they are the durable, immune-by-construction path. (Project agents under `.claude/agents/` also work, but they only register at session start, so a freshly added one needs a session restart.)
 
 ## Optional review gates
 
@@ -164,9 +170,9 @@ The whole fan-out discipline rests on subagents actually spawning. One mis-shape
 
 Two OPT-IN checkpoints where the orchestrator OFFERS a parallel-subagent review by ASKING the user, and proceeds only if they accept. The user may decline at each gate, and the work continues as normal. The gates are reviews, not background work: run them in the foreground when accepted, then continue.
 
-**Gate 1: plan-review at confirmation.** Before confirming a non-trivial plan (on Claude Code, before `ExitPlanMode`), ask the user whether to run a parallel plan-review. If they accept, fan out 2-3 `ctxr-plan-reviewer` agents over the PLAN with disjoint lenses (gaps, divergences from the user's intent, blind spots, edge cases, infeasibilities, missed files or steps). Fold the findings into the plan, revise it, then confirm.
+**Gate 1: plan-review at confirmation.** Before confirming a non-trivial plan (on Claude Code, before `ExitPlanMode`), ask the user whether to run a parallel plan-review. If they accept, fan out 2-3 `ctxr-agent-plan-reviewer` agents over the PLAN with disjoint lenses (gaps, divergences from the user's intent, blind spots, edge cases, infeasibilities, missed files or steps). Fold the findings into the plan, revise it, then confirm.
 
-**Gate 2: conformance-review after implementation.** Before declaring the work done (at merge-prep), ask the user whether to run a parallel conformance-review. If they accept, fan out `ctxr-conformance-reviewer` agents to check the BUILT work against the plan (missed items, divergences from locked decisions, cross-implementation parity). Fold the findings, then fix-or-accept each.
+**Gate 2: conformance-review after implementation.** Before declaring the work done (at merge-prep), ask the user whether to run a parallel conformance-review. If they accept, fan out `ctxr-agent-implementation-auditor` agents to check the BUILT work against the plan (missed items, divergences from locked decisions, cross-implementation parity). Fold the findings, then fix-or-accept each.
 
 Both gates use the scoped read-only agents from the tool-scoping section above, so they stay immune to the connector failure mode. The post-migration issue-tree audit in [`parallel-validation.md`](parallel-validation.md) is a specialization of the same fan-out-and-audit idea (a fixed three-agent recipe scoped to touched issues); these gates are the general plan-vs-work form of it.
 
