@@ -98,7 +98,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    - Else if `.claude/` directory exists at the project root: create `CLAUDE.md` with a single-line body `@AGENTS.md`.
 >    - Else: ask the user once: *"Are you using Claude Code for this project? (y/n)"*. On yes, create the same one-line `CLAUDE.md`. On no, skip.
 >
-> 5. **Create the per-project config from the template (only if missing):**
+> 5a. **Create the per-project config from the template (only if missing):**
 >    ```sh
 >    if [ ! -f .agents/ctxr-dev/github-dev-methodology.config.local.md ]; then
 >      cp .agents/ctxr-dev/github-dev-methodology/templates/config.local.md \
@@ -151,7 +151,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >
 >    </details>
 >
-> 5c. **Offer the recommended subagents (recommended, opt-in).** The `agents_orchestration` recipe fans work out to three small, tool-agnostic subagents that are read-only by prompt policy (not tool restriction), installed once at user scope so they are available in every project:
+> 5c. **Offer the recommended subagents (opt-in).** The `agents_orchestration` recipe fans work out to three small, tool-agnostic subagents that are read-only by prompt policy (not tool restriction), installed once at user scope so they are available in every project:
 >    - `agent-codebase-explorer` - locates code (where-is-X / what-references-Y) during planning fan-out.
 >    - `agent-plan-reviewer` - adversarially reviews a plan before you commit to it (powers the optional plan-review gate).
 >    - `agent-implementation-auditor` - audits built work against its plan at merge-prep (powers the optional conformance-review gate).
