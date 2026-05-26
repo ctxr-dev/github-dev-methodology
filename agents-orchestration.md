@@ -156,13 +156,13 @@ The whole fan-out discipline rests on subagents actually spawning. One mis-shape
 
 **Fix the schema at the connector layer.** For an MCP server you control, strip top-level combinators from the ADVERTISED schema while keeping call-time validation intact, so the public surface is flat but every call is still checked. That is the pattern `mcp-github` uses (in that repo: `src/registry.ts` plus `src/validation/advertise.ts`): advertise a flattened schema, enforce the full one at call time. For a connector you cannot edit, find the offender and disable it, but never probe one-by-one: run an automated schema-lint that connects to every reachable server, lists its tools, and flags any tool whose `input_schema` carries a top-level combinator (one pass clears all local servers and scales to hundreds); for servers you cannot introspect programmatically (managed or OAuth connectors), bisect by halves in O(log N).
 
-**The agents inherit the full toolset and tolerate missing or unhealthy tools at runtime.** `agent-codebase-explorer`, `agent-plan-reviewer`, and `agent-implementation-auditor` set no `tools:` field, so they inherit every capability the environment exposes; their prompts are tool-agnostic and resilient, using whatever is present and degrading around anything that is missing, errors, or times out at RUNTIME rather than aborting. This runtime resilience is distinct from the spawn-time failure above: a tool whose schema is malformed breaks the spawn before any agent runs, so it is fixed only at the connector layer, never tolerated by a prompt. Install the agents once via `@ctxr/kit` so they are available everywhere:
+**The agents inherit the full toolset and tolerate missing or unhealthy tools at runtime.** `agent-codebase-explorer`, `agent-plan-reviewer`, and `agent-implementation-auditor` set no `tools:` field, so they inherit every capability the environment exposes; their prompts are tool-agnostic and resilient, using whatever is present and degrading around anything that is missing, errors out, or times out at RUNTIME rather than aborting. This runtime resilience is distinct from the spawn-time failure above: a tool whose schema is malformed breaks the spawn before any agent runs, so it is fixed only at the connector layer, never tolerated by a prompt. Install the agents once via `@ctxr/kit` so they are available everywhere:
 
 ```bash
 npx @ctxr/kit install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
 ```
 
-Project-local copies in `.claude/agents/` are picked up when a session starts; the kit-installed user-level copies are available in every session and project.
+Installing `@ctxr/agent-codebase-explorer` registers an agent invoked as `agent-codebase-explorer` (the kit strips the `@ctxr/` scope and prefixes the install dir with `ctxr-`, but the invoked name is the AGENT.md frontmatter `name`); the same holds for `agent-plan-reviewer` and `agent-implementation-auditor`. Project-local copies in `.claude/agents/` are picked up when a session starts; the kit-installed user-level copies are available in every session and project.
 
 ## Optional review gates
 
