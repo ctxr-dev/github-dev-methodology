@@ -146,23 +146,23 @@ For a non-trivial fix: Investigate → Plan → Implement → Review as four seq
 
 Default is fresh subagents per spawn (no carried context). The exception is a single short follow-up to an investigator already in flight: continuing that agent (Claude Code: `SendMessage`) is cheaper than re-briefing a new one. Use sparingly; the default is still fresh.
 
-## Subagent tool scoping (keep fan-out alive)
+## Keeping fan-out alive: full-toolset agents + healthy connectors
 
-The whole fan-out discipline rests on subagents actually spawning. One mis-shaped tool can silently kill all of them at once, so scoping is not optional polish; it is what keeps the pattern working.
+The whole fan-out discipline rests on subagents actually spawning. One mis-shaped tool can silently kill all of them at once, so connector health is not optional polish; it is what keeps the pattern working.
 
 **Failure mode.** The Anthropic tool-use API rejects `oneOf` / `allOf` / `anyOf` at the TOP LEVEL of a tool's `input_schema` (the same combinator nested inside a property is fine). A subagent's init advertises its whole tool surface in ONE request, so a single tool that carries a top-level combinator fails the WHOLE request. Every subagent type then dies at once, and silently: the fan-out just stops happening, with no obvious error to trace back to the offending tool.
 
-**Rule: read-only fan-out agents declare a least-privilege allowlist, never "all tools".** Explore, plan, and review agents MUST declare an explicit `tools:` allowlist (Read, Grep, Glob, Bash; add WebFetch / WebSearch only when they need to pull docs) and MUST NOT inherit the full "all tools" surface. An agent that advertises only those built-ins carries no MCP connector schema in its init request, so it is immune to the failure mode by construction: there is no third-party schema present to be malformed.
+**Do not fix this by crippling the agents.** Giving fan-out agents a least-privilege `tools:` allowlist diverges from the rest of the ecosystem (agent-staff-engineer and the skills set no `tools:` and inherit everything) and strips them of the capabilities that make them useful. Fix it at the connector layer instead, and make the agents resilient.
 
-**MCP servers you own vs. connectors you do not.** For an MCP server you control, strip top-level combinators from the ADVERTISED schema while keeping call-time validation intact, so the public surface is flat but every call is still checked. That is the pattern `mcp-github` uses (`src/registry.ts` plus `src/validation/advertise.ts`): advertise a flattened schema, enforce the full schema when the tool runs. For a third-party connector you cannot edit, disable the unused ones rather than exposing them to fan-out agents.
+**Fix the schema at the connector layer.** For an MCP server you control, strip top-level combinators from the ADVERTISED schema while keeping call-time validation intact, so the public surface is flat but every call is still checked. That is the pattern `mcp-github` uses (`src/registry.ts` plus `src/validation/advertise.ts`): advertise a flattened schema, enforce the full one at call time. For a connector you cannot edit, find the offender and disable it, but never probe one-by-one: run an automated schema-lint that connects to every reachable server, lists its tools, and flags any tool whose `input_schema` carries a top-level combinator (one pass clears all local servers and scales to hundreds); for servers you cannot introspect programmatically (managed or OAuth connectors), bisect by halves in O(log N).
 
-**Scoped agents already exist for this.** The read-only agents `agent-codebase-explorer`, `agent-plan-reviewer`, and `agent-implementation-auditor` are scoped to exactly such an allowlist. Install them once via `@ctxr/kit` so they load in every session and project:
+**The agents inherit the full toolset and never halt on tool errors.** `agent-codebase-explorer`, `agent-plan-reviewer`, and `agent-implementation-auditor` set no `tools:` field, so they inherit every capability the environment exposes; their prompts are tool-agnostic and resilient, using whatever is present and degrading around anything missing or unhealthy rather than aborting. Install them once via `@ctxr/kit` so they are available everywhere:
 
 ```bash
 npx @ctxr/kit install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
 ```
 
-Use them for fan-out; they are the durable, immune-by-construction path. (Project agents under `.claude/agents/` also work, but they only register at session start, so a freshly added one needs a session restart.)
+Project-local copies in `.claude/agents/` are picked up when a session starts; the kit-installed user-level copies are available in every session and project.
 
 ## Optional review gates
 
