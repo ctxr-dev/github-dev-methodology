@@ -98,7 +98,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    - Else if `.claude/` directory exists at the project root: create `CLAUDE.md` with a single-line body `@AGENTS.md`.
 >    - Else: ask the user once: *"Are you using Claude Code for this project? (y/n)"*. On yes, create the same one-line `CLAUDE.md`. On no, skip.
 >
-> 5a. **Create the per-project config from the template (only if missing):**
+> 5. **Create the per-project config from the template (only if missing):**
 >    ```sh
 >    if [ ! -f .agents/ctxr-dev/github-dev-methodology.config.local.md ]; then
 >      cp .agents/ctxr-dev/github-dev-methodology/templates/config.local.md \
@@ -106,7 +106,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    fi
 >    ```
 >
-> 5b. **Install and register the `mcp-github` MCP server (recommended).** The methodology drives GitHub through the [`mcp-github`](https://github.com/ctxr-dev/mcp-github) MCP server (issue, PR, project, label, org, and workflow tools; see its README for the catalogue). The canonical install is the npx-from-GitHub entry below: npx fetches, builds, and runs the server on demand, so registering this entry **is** installing it. Add it to `./.mcp.json` (and `./.agents/mcp.json` if you keep a vendor-neutral copy), then restart your MCP client.
+> 6. **Install and register the `mcp-github` MCP server (recommended).** The methodology drives GitHub through the [`mcp-github`](https://github.com/ctxr-dev/mcp-github) MCP server (issue, PR, project, label, org, and workflow tools; see its README for the catalogue). The canonical install is the npx-from-GitHub entry below: npx fetches, builds, and runs the server on demand, so registering this entry **is** installing it. Add it to `./.mcp.json` (and `./.agents/mcp.json` if you keep a vendor-neutral copy), then restart your MCP client.
 >
 >    > [!IMPORTANT]
 >    > **Every path you write into these MCP-config files MUST be relative to the project root**, never absolute. These files are checked into the project and shared across machines and CI; an absolute path like `/Users/alice/...` silently breaks on every other machine and inside CI containers. The recommended npx entry carries no path at all, which sidesteps this; the relative-path rule matters for the clone-and-build alternative below.
@@ -151,7 +151,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >
 >    </details>
 >
-> 5c. **Offer the recommended subagents (opt-in).** The `agents_orchestration` recipe fans work out to three small, tool-agnostic subagents that are read-only by prompt policy (not tool restriction), installed once at user scope so they are available in every project:
+> 7. **Offer the recommended subagents (opt-in).** The `agents_orchestration` recipe fans work out to three small, tool-agnostic subagents that are read-only by prompt policy (not tool restriction), installed once at user scope so they are available in every project:
 >    - `agent-codebase-explorer` - locates code (where-is-X / what-references-Y) during planning fan-out.
 >    - `agent-plan-reviewer` - adversarially reviews a plan before you commit to it (powers the optional plan-review gate).
 >    - `agent-implementation-auditor` - audits built work against its plan at merge-prep (powers the optional conformance-review gate).
@@ -162,7 +162,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >    ```
 >    On **no**, skip - the methodology still works and the orchestrator runs the fan-out and the review gates inline. The two review agents earn their keep under `subagent_review` (on in the `single-issue` and `full` presets). See [`agents-orchestration.md`](agents-orchestration.md) for how they are used.
 >
-> 6. **Pick a feature preset.** Ask the user once:
+> 8. **Pick a feature preset.** Ask the user once:
 >    > "Which features do you need?"
 >    > - **`pr-only`** - PR loop, Copilot review, conventional commits, agents orchestration, audit-vs-execute. No issues, no project board.
 >    > - **`single-issue`** - `pr-only` + issue lifecycle + canonical issue schema. Still no project board.
@@ -170,9 +170,9 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >
 >    Write a `### Features` table under the active `## Project: <slug>` section in the config with the 13 booleans set per the chosen preset (see `local-config.md` for the per-preset matrix). The template's defaults already match `pr-only` - for `single-issue` flip `issue_schema` + `issue_lifecycle` + `subagent_review` to `true`; for `full` flip all of them to `true`.
 >
-> 7. **Fill the config.** Ask the user for every field in the active project section. For fields not used by the chosen preset (e.g. `project_url` and `sibling_repos` under `pr-only`), record `<not used: pr-only>` rather than leaving the placeholder - that way the value is unambiguous if the user later upgrades the preset.
+> 9. **Fill the config.** Ask the user for every field in the active project section. For fields not used by the chosen preset (e.g. `project_url` and `sibling_repos` under `pr-only`), record `<not used: pr-only>` rather than leaving the placeholder - that way the value is unambiguous if the user later upgrades the preset.
 >
-> 8. **Bootstrap.** Read `.agents/ctxr-dev/github-dev-methodology/index.md` and follow it. Honour the active features per the index preamble: never bootstrap a recipe whose `feature` is off, and never ask the user for config values that belong only to disabled features.
+> 10. **Bootstrap.** Read `.agents/ctxr-dev/github-dev-methodology/index.md` and follow it. Honour the active features per the index preamble: never bootstrap a recipe whose `feature` is off, and never ask the user for config values that belong only to disabled features.
 
 After install, every future session in this project picks up the methodology automatically. To update: `cd .agents/ctxr-dev/github-dev-methodology && git pull`.
 
