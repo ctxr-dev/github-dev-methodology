@@ -56,13 +56,31 @@ Before doing anything else, check whether `.agents/ctxr-dev/github-dev-methodolo
 
 If it doesn't exist, create one from [`templates/config.local.md`](templates/config.local.md) and ASK THE USER to fill in at least the `active_project` slug + the `### Features` table for one project section before proceeding. When `pr_loop` is on, this same bootstrap does the ONE-TIME reviewer-set discovery: enumerate the candidate reviewers (Copilot via `suggestedActors`, capturing `copilot_bot_id`; humans/teams via collaborators / CODEOWNERS / `suggestedActors`), ask the user once which to request on every PR and which humans must approve, and persist `reviewers` + `required_reviewers`. This is the only reviewer ask; [`pr-loop.md`](pr-loop.md) reads the persisted set thereafter. See [`local-config.md`](local-config.md) for the full schema and the 3 install presets.
 
+## Recommended subagents (offer ONCE, at bootstrap)
+
+The `agents_orchestration` recipe fans work out to three small, tool-agnostic subagents that are read-only by prompt policy (not tool restriction):
+
+| Agent | Role |
+|---|---|
+| `agent-codebase-explorer` | Locates code (where-is-X / what-references-Y) during planning fan-out. |
+| `agent-plan-reviewer` | Adversarially reviews a plan before you commit to it (powers the optional plan-review gate). |
+| `agent-implementation-auditor` | Audits built work against its plan at merge-prep (powers the optional conformance-review gate). |
+
+They are optional but recommended. As part of the SAME bootstrap that creates the config (above), ask the user ONCE whether to install them at user scope so they are available in every project. On agreement, install globally for the user:
+
+```bash
+npx @ctxr/kit install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
+```
+
+If the user declines, skip it: the orchestrator still runs the fan-out and the optional review gates inline. Do NOT re-ask in later sessions (this is a one-time bootstrap offer, like the reviewer-set discovery above). The two review agents earn their keep under `subagent_review` (on in the `single-issue` and `full` presets); see [`agents-orchestration.md`](agents-orchestration.md) for how they are used.
+
 ## Topic index (each entry is gated; check frontmatter before reading)
 
 Annotations: `feature: <flag>` (the flag that enables this file) · `in: <presets>` (which install presets enable it by default).
 
 1. [`pr-loop.md`](pr-loop.md) · `feature: pr_loop` · `in: pr-only, single-issue, full`. PR review loop. Watches a SET of individual reviewer logins (Copilot + humans) from the persisted `reviewers` config; a team is requested for review but tracked via its member logins. 60s default cadence (configurable), **foreground polling** (the agent keeps the loop in the foreground via the `gh_pr_review_watch` tool or the `scripts/pr-review-watch.mjs` long-poll; no callbacks, no wake-ups). 24h max. Exit predicate: every configured reviewer has re-reviewed HEAD and is green (no unresolved non-outdated thread authored by them) + required approvals present + CI green. ALWAYS resolve threads in the same push that fixes them.
 2. [`commits.md`](commits.md) · `feature: conventional_commits` · `in: pr-only, single-issue, full` - Conventional Commits 1.0. Reviewer-request via GraphQL `requestReviews` with `botIds` (the Copilot section is gated on `copilot_review`).
-3. [`agents-orchestration.md`](agents-orchestration.md) · `feature: agents_orchestration` · `in: pr-only, single-issue, full` - Default pattern for every non-trivial task: push focused work into fresh subagents; orchestrator holds only the plan, decisions, and compacted history. The umbrella that `parallel-validation.md` specialises. Also hosts the subagent tool-scoping discipline (always on) and the optional plan-review / conformance-review gates (gated by `subagent_review`, an inline section).
+3. [`agents-orchestration.md`](agents-orchestration.md) · `feature: agents_orchestration` · `in: pr-only, single-issue, full` - Default pattern for every non-trivial task: push focused work into fresh subagents; orchestrator holds only the plan, decisions, and compacted history. The umbrella that `parallel-validation.md` specialises. Also hosts the fan-out resilience discipline (full-toolset, never-halt subagents; spawn-time bad-schema risks fixed at the connector layer, not by restricting agents) and the optional plan-review / conformance-review gates (gated by `subagent_review`, an inline section).
 4. [`audit-vs-execute.md`](audit-vs-execute.md) · `feature: audit_vs_execute` · `in: pr-only, single-issue, full` - Investigation findings ≠ approval. Always pause for explicit user "go" before mutating artefacts. PR merge is human-gated.
 5. [`issue-schema.md`](issue-schema.md) · `feature: issue_schema` · `in: single-issue, full` - Canonical issue body shape. MUST-FOLLOW; validator hard-fails on missing sections.
 6. [`issue-lifecycle.md`](issue-lifecycle.md) · `feature: issue_lifecycle` · `in: single-issue, full` - Single-issue / single-PR flow: create issue → branch (status → `In progress`) → PR with `Closes #N` (status → `In review`) → wait → human merges + closes (status → `Done`) → bundling rules. The agent owns `In progress` and `In review`; the human owns `Done`, the merge, and the close.
