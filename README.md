@@ -151,6 +151,17 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >
 >    </details>
 >
+> 5c. **Offer the recommended review subagents (recommended, opt-in).** The `agents_orchestration` recipe fans work out to three small, read-only, tool-agnostic subagents, installed once at user scope so they are available in every project:
+>    - `agent-codebase-explorer` - locates code (where-is-X / what-references-Y) during planning fan-out.
+>    - `agent-plan-reviewer` - adversarially reviews a plan before you commit to it (powers the optional plan-review gate).
+>    - `agent-implementation-auditor` - audits built work against its plan at merge-prep (powers the optional conformance-review gate).
+>
+>    **Ask the user once:** *"Install the 3 recommended review subagents at user scope, so they are available in every project? (y/n)"* On **yes**, install them globally for the user with `@ctxr/kit`:
+>    ```sh
+>    npx @ctxr/kit install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
+>    ```
+>    On **no**, skip - the methodology still works and the orchestrator runs the fan-out and the review gates inline. The two review agents earn their keep under `subagent_review` (on in the `single-issue` and `full` presets). See [`agents-orchestration.md`](agents-orchestration.md) for how they are used.
+>
 > 6. **Pick a feature preset.** Ask the user once:
 >    > "Which features do you need?"
 >    > - **`pr-only`** - PR loop, Copilot review, conventional commits, agents orchestration, audit-vs-execute. No issues, no project board.

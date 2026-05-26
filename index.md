@@ -56,6 +56,24 @@ Before doing anything else, check whether `.agents/ctxr-dev/github-dev-methodolo
 
 If it doesn't exist, create one from [`templates/config.local.md`](templates/config.local.md) and ASK THE USER to fill in at least the `active_project` slug + the `### Features` table for one project section before proceeding. When `pr_loop` is on, this same bootstrap does the ONE-TIME reviewer-set discovery: enumerate the candidate reviewers (Copilot via `suggestedActors`, capturing `copilot_bot_id`; humans/teams via collaborators / CODEOWNERS / `suggestedActors`), ask the user once which to request on every PR and which humans must approve, and persist `reviewers` + `required_reviewers`. This is the only reviewer ask; [`pr-loop.md`](pr-loop.md) reads the persisted set thereafter. See [`local-config.md`](local-config.md) for the full schema and the 3 install presets.
 
+## Recommended subagents (offer ONCE, at bootstrap)
+
+The `agents_orchestration` recipe fans work out to three small, read-only, tool-agnostic subagents:
+
+| Agent | Role |
+|---|---|
+| `agent-codebase-explorer` | Locates code (where-is-X / what-references-Y) during planning fan-out. |
+| `agent-plan-reviewer` | Adversarially reviews a plan before you commit to it (powers the optional plan-review gate). |
+| `agent-implementation-auditor` | Audits built work against its plan at merge-prep (powers the optional conformance-review gate). |
+
+They are optional but recommended. As part of the SAME bootstrap that creates the config (above), ask the user ONCE whether to install them at user scope so they are available in every project. On agreement, install globally for the user:
+
+```bash
+npx @ctxr/kit install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
+```
+
+If the user declines, skip it: the orchestrator still runs the fan-out and the optional review gates inline. Do NOT re-ask in later sessions (this is a one-time bootstrap offer, like the reviewer-set discovery above). The two review agents earn their keep under `subagent_review` (on in the `single-issue` and `full` presets); see [`agents-orchestration.md`](agents-orchestration.md) for how they are used.
+
 ## Topic index (each entry is gated; check frontmatter before reading)
 
 Annotations: `feature: <flag>` (the flag that enables this file) · `in: <presets>` (which install presets enable it by default).
