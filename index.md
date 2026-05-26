@@ -58,7 +58,7 @@ If it doesn't exist, create one from [`templates/config.local.md`](templates/con
 
 ## Recommended subagents (offer ONCE, at bootstrap)
 
-The `agents_orchestration` recipe fans work out to three small, read-only, tool-agnostic subagents:
+The `agents_orchestration` recipe fans work out to three small, tool-agnostic subagents that are read-only by prompt policy (not tool restriction):
 
 | Agent | Role |
 |---|---|
