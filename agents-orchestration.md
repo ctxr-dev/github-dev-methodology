@@ -174,7 +174,7 @@ Two OPT-IN checkpoints where the orchestrator OFFERS a parallel-subagent review 
 
 **Gate 2: conformance-review after implementation.** Before declaring the work done (at merge-prep), ask the user whether to run a parallel conformance-review. If they accept, fan out `agent-implementation-auditor` agents to check the BUILT work against the plan (missed items, divergences from locked decisions, cross-implementation parity). Fold the findings, then fix-or-accept each.
 
-Both gates use the full-toolset, resilient read-only agents described above, so a healthy connector set keeps the fan-out spawnable. The post-migration issue-tree audit in [`parallel-validation.md`](parallel-validation.md) is a specialization of the same fan-out-and-audit idea (a fixed three-agent recipe scoped to touched issues); these gates are the general plan-vs-work form of it.
+Both gates use the full-toolset agents described above (read-only by prompt policy, not by tool restriction), so a healthy connector set keeps the fan-out spawnable. The post-migration issue-tree audit in [`parallel-validation.md`](parallel-validation.md) is a specialization of the same fan-out-and-audit idea (a fixed three-agent recipe scoped to touched issues); these gates are the general plan-vs-work form of it.
 
 This section is about reviews only. It does NOT change the foreground-only, no-background polling discipline: the gates add an optional review step, not any new polling or wake-up behaviour.
 
