@@ -158,7 +158,7 @@ Works with any agent that can run shell and edit files. **Copy this prompt and p
 >
 >    **Ask the user once:** *"Install the 3 recommended subagents at user scope, so they are available in every project? (y/n)"* On **yes**, install them globally for the user with `@ctxr/kit`:
 >    ```sh
->    npx @ctxr/kit install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
+>    npx @ctxr/kit@latest install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
 >    ```
 >    On **no**, skip - the methodology still works and the orchestrator runs the fan-out and the review gates inline. The two review agents earn their keep under `subagent_review` (on in the `single-issue` and `full` presets). See [`agents-orchestration.md`](agents-orchestration.md) for how they are used.
 >

@@ -159,7 +159,7 @@ The whole fan-out discipline rests on subagents actually spawning. One mis-shape
 **The agents inherit the full toolset and tolerate missing or unhealthy tools at runtime.** `agent-codebase-explorer`, `agent-plan-reviewer`, and `agent-implementation-auditor` set no `tools:` field, so they inherit every capability the environment exposes; their prompts are tool-agnostic and resilient, using whatever is present and degrading around anything that is missing, errors out, or times out at RUNTIME rather than aborting. This runtime resilience is distinct from the spawn-time failure above: a tool whose schema is malformed breaks the spawn before any agent runs, so it is fixed only at the connector layer, never tolerated by a prompt. Install the agents once via `@ctxr/kit` so they are available everywhere:
 
 ```bash
-npx @ctxr/kit install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
+npx @ctxr/kit@latest install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
 ```
 
 Installing `@ctxr/agent-codebase-explorer` registers an agent invoked as `agent-codebase-explorer` (the kit strips the `@ctxr/` scope and prefixes the install dir with `ctxr-`, but the invoked name is the AGENT.md frontmatter `name`); the same holds for `agent-plan-reviewer` and `agent-implementation-auditor`. Project-local copies in `.claude/agents/` are picked up when a session starts; the kit-installed user-level copies are available in every session and project.

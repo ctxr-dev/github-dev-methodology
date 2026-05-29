@@ -69,7 +69,7 @@ The `agents_orchestration` recipe fans work out to three small, tool-agnostic su
 They are optional but recommended. As part of the SAME bootstrap that creates the config (above), ask the user ONCE whether to install them at user scope so they are available in every project. On agreement, install globally for the user:
 
 ```bash
-npx @ctxr/kit install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
+npx @ctxr/kit@latest install --user @ctxr/agent-codebase-explorer @ctxr/agent-plan-reviewer @ctxr/agent-implementation-auditor
 ```
 
 If the user declines, skip it: the orchestrator still runs the fan-out and the optional review gates inline. Do NOT re-ask in later sessions (this is a one-time bootstrap offer, like the reviewer-set discovery above). The two review agents earn their keep under `subagent_review` (on in the `single-issue` and `full` presets); see [`agents-orchestration.md`](agents-orchestration.md) for how they are used.
