@@ -1,0 +1,11 @@
+{
+  "name": "github-dev-methodology",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "omp": {
+    "extensions": [
+      "./omp/merge-guard.js"
+    ]
+  }
+}

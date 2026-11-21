@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/skills/github-dev-methodology/scripts/gdm.mjs\" hook session-start --client claude"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/skills/github-dev-methodology/scripts/gdm.mjs\" hook pre-tool-use --client claude"
+          }
+        ]
+      }
+    ]
+  }
+}

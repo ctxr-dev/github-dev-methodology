@@ -1,0 +1,55 @@
+{
+  "version": "1.0.0",
+  "locked": [
+    {
+      "name": "type:epic",
+      "color": "5319E7",
+      "description": "Umbrella parent issue with sub-issues"
+    },
+    {
+      "name": "type:feature",
+      "color": "0E8A16",
+      "description": "New capability"
+    },
+    {
+      "name": "type:enhancement",
+      "color": "0075CA",
+      "description": "Improvement to existing capability"
+    },
+    {
+      "name": "type:bug",
+      "color": "D73A4A",
+      "description": "Defect"
+    },
+    {
+      "name": "type:refactor",
+      "color": "1D76DB",
+      "description": "Internal restructure, no behaviour change"
+    },
+    {
+      "name": "type:docs",
+      "color": "0052CC",
+      "description": "Documentation"
+    },
+    {
+      "name": "type:chore",
+      "color": "C5DEF5",
+      "description": "Maintenance / infrastructure"
+    },
+    {
+      "name": "scope:breaking",
+      "color": "B60205",
+      "description": "Breaks backward compatibility"
+    },
+    {
+      "name": "scope:additive",
+      "color": "E99695",
+      "description": "Additive only; no breaking change"
+    }
+  ],
+  "project_extensible_color_conventions": {
+    "phase": "FBCA04",
+    "area": "8B4FBC",
+    "release": "0E8A16"
+  }
+}

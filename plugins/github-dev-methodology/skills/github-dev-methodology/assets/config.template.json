@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/ctxr-dev/github-dev-methodology/v1.0.0/plugins/github-dev-methodology/skills/github-dev-methodology/assets/config.schema.json",
+  "schema_version": 1,
+  "active_project": "my-project",
+  "projects": {
+    "my-project": {
+      "preset": "pr-only",
+      "features": {},
+      "org": "my-org",
+      "primary_repo": "my-repo",
+      "sibling_repos": [],
+      "project_url": null,
+      "review": {
+        "reviewers": [],
+        "required_reviewers": [],
+        "bot_review_timeout_minutes": 15,
+        "poll_seconds": 60,
+        "max_hours": 24,
+        "wait_mode": "foreground"
+      },
+      "merge": {
+        "authority": "human",
+        "scopes": []
+      },
+      "plans": {
+        "post_migration": "minimize"
+      },
+      "cache": {
+        "copilot_bot_id": null
+      }
+    }
+  }
+}
