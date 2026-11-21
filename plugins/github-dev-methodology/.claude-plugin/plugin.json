@@ -1,0 +1,10 @@
+{
+  "name": "github-dev-methodology",
+  "version": "1.0.0",
+  "description": "GitHub Issues + Projects workflow for AI agents: PR loop, issue schema, plan-to-issues, worktrees, stacked PRs, merge authority.",
+  "author": {
+    "name": "ctxr-dev"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/ctxr-dev/github-dev-methodology"
+}

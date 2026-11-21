@@ -1,0 +1,43 @@
+{
+  "plan_id": "sample-plan",
+  "repo": "meshin-dev/gdm-sandbox",
+  "project_url": null,
+  "items": [
+    {
+      "key": "EPIC",
+      "title": "Epic: sample roadmap",
+      "type": "Epic",
+      "body_file": "epic.md",
+      "parent": null,
+      "blocked_by": [],
+      "repo": null,
+      "labels": [],
+      "fields": {},
+      "project_fields": {}
+    },
+    {
+      "key": "A",
+      "title": "feat(sample): first deliverable",
+      "type": "Feature",
+      "body_file": "child-a.md",
+      "parent": "EPIC",
+      "blocked_by": [],
+      "repo": null,
+      "labels": [],
+      "fields": {},
+      "project_fields": {}
+    },
+    {
+      "key": "B",
+      "title": "feat(sample): second deliverable",
+      "type": "Feature",
+      "body_file": "child-b.md",
+      "parent": "EPIC",
+      "blocked_by": ["A"],
+      "repo": null,
+      "labels": [],
+      "fields": {},
+      "project_fields": {}
+    }
+  ]
+}

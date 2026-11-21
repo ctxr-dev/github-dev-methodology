@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ctxr-dev/github-dev-methodology/v1.0.0/plugins/github-dev-methodology/skills/github-dev-methodology/assets/config.schema.json",
+  "title": "github-dev-methodology repo config v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "active_project",
+    "projects"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "active_project": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projects": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/project"
+      }
+    }
+  },
+  "$defs": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preset",
+        "org",
+        "primary_repo"
+      ],
+      "properties": {
+        "preset": {
+          "enum": [
+            "pr-only",
+            "single-issue",
+            "full"
+          ]
+        },
+        "features": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pr_loop": {
+              "type": "boolean"
+            },
+            "copilot_review": {
+              "type": "boolean"
+            },
+            "conventional_commits": {
+              "type": "boolean"
+            },
+            "agents_orchestration": {
+              "type": "boolean"
+            },
+            "audit_vs_execute": {
+              "type": "boolean"
+            },
+            "issue_schema": {
+              "type": "boolean"
+            },
+            "issue_lifecycle": {
+              "type": "boolean"
+            },
+            "label_taxonomy": {
+              "type": "boolean"
+            },
+            "plan_to_issues": {
+              "type": "boolean"
+            },
+            "parallel_validation": {
+              "type": "boolean"
+            },
+            "plan_deprecation": {
+              "type": "boolean"
+            },
+            "cold_start": {
+              "type": "boolean"
+            },
+            "subagent_review": {
+              "type": "boolean"
+            },
+            "worktrees": {
+              "type": "boolean"
+            },
+            "stacked_prs": {
+              "type": "boolean"
+            }
+          }
+        },
+        "org": {
+          "type": "string",
+          "minLength": 1
+        },
+        "primary_repo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sibling_repos": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "project_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "reviewers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required_reviewers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "bot_review_timeout_minutes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "poll_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_hours": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "wait_mode": {
+              "enum": [
+                "foreground",
+                "wakeup"
+              ]
+            }
+          }
+        },
+        "merge": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "authority": {
+              "enum": [
+                "human",
+                "scoped",
+                "autonomous"
+              ]
+            },
+            "scopes": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "dependabot-green",
+                  "session-instruction"
+                ]
+              }
+            }
+          }
+        },
+        "plans": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "post_migration": {
+              "enum": [
+                "minimize",
+                "delete"
+              ]
+            }
+          }
+        },
+        "cache": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "copilot_bot_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

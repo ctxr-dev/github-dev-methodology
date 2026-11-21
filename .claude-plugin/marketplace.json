@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "gdm",
+  "owner": {
+    "name": "ctxr-dev"
+  },
+  "metadata": {
+    "description": "github-dev-methodology"
+  },
+  "plugins": [
+    {
+      "name": "github-dev-methodology",
+      "source": "./plugins/github-dev-methodology",
+      "description": "GitHub Issues + Projects workflow for AI agents: PR loop, issue schema, plan-to-issues, worktrees, stacked PRs, merge authority.",
+      "category": "development",
+      "license": "MIT",
+      "homepage": "https://github.com/ctxr-dev/github-dev-methodology"
+    }
+  ]
+}

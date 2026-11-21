@@ -1,0 +1,1 @@
+- github-dev-methodology: this repo follows it. Settings: .github-dev-methodology/config.json. Install the plugin for your client (Claude Code, Codex, OMP): https://github.com/ctxr-dev/github-dev-methodology#install. Read the github-dev-methodology skill before any branch, issue, PR or merge work.

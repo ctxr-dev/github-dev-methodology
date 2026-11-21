@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/skills/github-dev-methodology/scripts/gdm.mjs\" hook session-start --client codex"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/skills/github-dev-methodology/scripts/gdm.mjs\" hook pre-tool-use --client codex"
+          }
+        ]
+      }
+    ]
+  }
+}

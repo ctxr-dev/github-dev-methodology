@@ -1,4 +1,4 @@
 node_modules/
 *.local.md
-!templates/*.local.md
 .DS_Store
+.claude/
