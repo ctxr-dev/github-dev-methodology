@@ -46,7 +46,7 @@ The plugin is `github-dev-methodology@gdm`. The client keeps the plugin code in 
 **Claude Code**
 
 ```sh
-claude plugin marketplace add ctxr-dev/github-dev-methodology#v1.0.0
+claude plugin marketplace add ctxr-dev/github-dev-methodology#v1.0.1
 claude plugin install github-dev-methodology@gdm
 ```
 
@@ -62,7 +62,7 @@ Restart the OMP session after install, because extensions load at startup.
 **Codex**
 
 ```sh
-codex plugin marketplace add ctxr-dev/github-dev-methodology --ref v1.0.0
+codex plugin marketplace add ctxr-dev/github-dev-methodology --ref v1.0.1
 codex plugin add github-dev-methodology@gdm
 ```
 
@@ -126,7 +126,7 @@ The full steps and the key mapping are in the "Migration from v0" section of [co
 ~/.github-dev-methodology/
 ├── config.json                                   user config (optional)
 ├── worktrees/<host>/<owner>/<repo>/<branch>      branch worktrees
-└── state/<host>/<owner>/<repo>/                  plan ledgers
+└── state/<host>/<owner>/<repo>/                  plan ledgers, worktree owner records
 
 <repo>/
 ├── AGENTS.md                                     one marked block

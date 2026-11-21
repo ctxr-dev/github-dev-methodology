@@ -1,32 +1,25 @@
-import { inspectWorktrees, pruneBlocker, removeWorktree, splitFlags } from "../lib/worktrees.mjs";
+import { pruneCandidates, selectAllMerged, selectExplicit } from "../lib/worktree-prune.mjs";
+import { splitFlags, worktreeContext } from "../lib/worktrees.mjs";
 import { UsageError } from "../lib/errors.mjs";
 
-export async function run(args, ctx) {
-  const { positional } = splitFlags(args);
-  if (positional.length > 0) throw new UsageError("usage: gdm worktrees prune [--json]");
-  const { git, entries } = await inspectWorktrees(ctx);
-  const mainPath = entries.find((entry) => entry.main).path;
-  const removed = [];
-  const kept = [];
-  for (const item of entries.filter((entry) => !entry.main)) {
-    const blocker = pruneBlocker(item, ctx.cwd);
-    if (blocker) {
-      kept.push({ path: item.path, branch: item.branch, reason: blocker });
-      continue;
-    }
-    const outcome = removeWorktree(git, mainPath, item);
-    if (outcome.removed) removed.push({ path: item.path, branch: item.branch, branchKept: outcome.branchKept });
-    else kept.push({ path: item.path, branch: item.branch, reason: outcome.reason });
-  }
-  git(["worktree", "prune"], mainPath);
-  if (ctx.json) {
-    ctx.stdout.write(`${JSON.stringify({ removed, kept })}\n`);
-    return 0;
-  }
-  removed.forEach((item) => {
+const USAGE = "usage: gdm worktrees prune <path|branch>... | --all-merged";
+
+function writeText(report, stdout) {
+  report.removed.forEach((item) => {
     const note = item.branchKept ? ` (branch kept: ${item.branchKept})` : "";
-    ctx.stdout.write(`removed: ${item.path} (${item.branch})${note}\n`);
+    stdout.write(`removed: ${item.path} (${item.branch})${note}\n`);
   });
-  kept.forEach((item) => ctx.stdout.write(`kept: ${item.path} (${item.reason})\n`));
+  report.kept.forEach((item) => stdout.write(`kept: ${item.path ?? item.target} (${item.reason})\n`));
+}
+
+export async function run(args, ctx) {
+  const { positional, flags } = splitFlags(args, [], ["--all-merged"]);
+  const allMerged = flags["--all-merged"] === true;
+  if (allMerged === positional.length > 0) throw new UsageError(USAGE);
+  const context = worktreeContext(ctx);
+  const selection = allMerged ? selectAllMerged(context) : selectExplicit(context, positional);
+  const report = await pruneCandidates(context, selection);
+  if (ctx.json) ctx.stdout.write(`${JSON.stringify(report)}\n`);
+  else writeText(report, ctx.stdout);
   return 0;
 }

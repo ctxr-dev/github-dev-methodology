@@ -62,14 +62,14 @@ test("outside a methodology repo it fails with a clear message", async () => {
 });
 
 test("changing only the codex manifest version fails and names the file", async () => {
-  const failures = await newFailures((root) => editJson(root, "plugins/github-dev-methodology/.codex-plugin/plugin.json", (m) => ({ ...m, version: "1.0.1" })));
+  const failures = await newFailures((root) => editJson(root, "plugins/github-dev-methodology/.codex-plugin/plugin.json", (m) => ({ ...m, version: "9.9.9" })));
   assert.deepEqual(failures, [
-    'release: version: plugins/github-dev-methodology/.codex-plugin/plugin.json is "1.0.1" but package.json is "1.0.0"',
+    'release: version: plugins/github-dev-methodology/.codex-plugin/plugin.json is "9.9.9" but package.json is "1.0.1"',
   ]);
 });
 
 test("the SKILL.md metadata version takes part in the invariant", async () => {
-  const failures = await newFailures((root) => edit(root, `${SKILL}/SKILL.md`, (t) => t.replace("version: 1.0.0", "version: 2.0.0")));
+  const failures = await newFailures((root) => edit(root, `${SKILL}/SKILL.md`, (t) => t.replace("version: 1.0.1", "version: 2.0.0")));
   assert.match(failures[0], /SKILL\.md metadata\.version is "2\.0\.0"/);
 });
 

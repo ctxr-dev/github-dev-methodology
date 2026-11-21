@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { findOrphanDirs, inspectWorktrees, splitFlags } from "../lib/worktrees.mjs";
 import { UsageError } from "../lib/errors.mjs";
+import { describeLock } from "../lib/worktree-ownership.mjs";
 
 function formatAge(seconds) {
   if (seconds === null) return "-";
@@ -9,11 +10,18 @@ function formatAge(seconds) {
   return `${Math.floor(seconds / 86400)}d`;
 }
 
+function formatLock(item) {
+  if (!item.locked) return "";
+  const { owner } = describeLock(item.lock, () => 0);
+  if (owner === null) return `  lock: ${item.lock ?? "(no reason)"}`;
+  return `  lock: owner=${owner} age=${formatAge(item.lock_age_seconds)}`;
+}
+
 function formatLine(item) {
   const label = item.main ? "main" : item.branch ?? "(detached)";
   const pr = item.pr === null ? "-" : `PR:${item.pr}`;
   const tail = item.flags.length > 0 ? `  [${item.flags.join(",")}]` : "";
-  return `${item.path}  ${label}  ${pr}  ${formatAge(item.lastCommitAgeSeconds)}${tail}`;
+  return `${item.path}  ${label}  ${pr}  ${formatAge(item.lastCommitAgeSeconds)}${tail}${formatLock(item)}`;
 }
 
 export async function run(args, ctx) {

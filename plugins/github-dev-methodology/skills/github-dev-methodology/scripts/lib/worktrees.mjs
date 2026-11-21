@@ -1,8 +1,10 @@
-import { existsSync, mkdirSync, readdirSync, realpathSync } from "node:fs";
-import { dirname, join, resolve, sep } from "node:path";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { GdmError, UsageError } from "./errors.mjs";
 import { repoIdentity, spawnGit } from "./repo-identity.mjs";
 import { loadUserConfig, worktreePath } from "./paths.mjs";
+import { describeLock, readOwnerRecord } from "./worktree-ownership.mjs";
+import { canonicalPath, isInside } from "./worktree-paths.mjs";
 
 const PR_STATE_PRIORITY = ["OPEN", "MERGED", "CLOSED"];
 
@@ -10,12 +12,16 @@ export function gitFrom(ctx) {
   return ctx.git ?? spawnGit;
 }
 
-export function splitFlags(args, valueFlags = []) {
+export function splitFlags(args, valueFlags = [], switchFlags = []) {
   const positional = [];
   const flags = {};
   for (let index = 0; index < args.length; index += 1) {
     const token = args[index];
     if (token === "--json") continue;
+    if (switchFlags.includes(token)) {
+      flags[token] = true;
+      continue;
+    }
     const flag = valueFlags.find((name) => token === name || token.startsWith(`${name}=`));
     if (flag) {
       const inline = token.startsWith(`${flag}=`);
@@ -46,7 +52,7 @@ export function parseWorktreeList(porcelain) {
     .map((block) => block.trim())
     .filter(Boolean)
     .map((block, index) => {
-      const entry = { path: null, head: null, branch: null, bare: false, locked: false, prunable: false, main: index === 0 };
+      const entry = { path: null, head: null, branch: null, bare: false, locked: false, lockReason: null, prunable: false, main: index === 0 };
       for (const line of block.split("\n")) {
         const [key, ...rest] = line.split(" ");
         const value = rest.join(" ");
@@ -54,8 +60,8 @@ export function parseWorktreeList(porcelain) {
         else if (key === "HEAD") entry.head = value;
         else if (key === "branch") entry.branch = value.replace(/^refs\/heads\//, "");
         else if (key === "bare") entry.bare = true;
-        else if (key === "locked") entry.locked = true;
         else if (key === "prunable") entry.prunable = true;
+        else if (key === "locked") Object.assign(entry, { locked: true, lockReason: value || null });
       }
       return entry;
     })
@@ -64,20 +70,6 @@ export function parseWorktreeList(porcelain) {
 
 export function listWorktrees(git, root) {
   return parseWorktreeList(gitOrThrow(git, ["worktree", "list", "--porcelain"], root));
-}
-
-export function canonicalPath(path) {
-  try {
-    return realpathSync(path);
-  } catch {
-    return resolve(path);
-  }
-}
-
-export function isInside(path, parent) {
-  const child = canonicalPath(path);
-  const base = canonicalPath(parent);
-  return child === base || child.startsWith(base.endsWith(sep) ? base : base + sep);
 }
 
 function defaultBaseRef(git, root) {
@@ -107,12 +99,12 @@ export function addWorktree({ git, branch, base, env, cwd }) {
   mkdirSync(dirname(path), { recursive: true });
   if (reuse) {
     gitOrThrow(git, ["worktree", "add", path, branch], id.root);
-    return path;
+    return { path, id };
   }
   const startPoint = base ?? defaultBaseRef(git, id.root);
   if (!refResolves(git, id.root, startPoint)) throw new GdmError(`base ref not found: ${startPoint}`);
   gitOrThrow(git, ["worktree", "add", path, "-b", branch, startPoint], id.root);
-  return path;
+  return { path, id };
 }
 
 export function worktreeStatus(entry, git, now) {
@@ -143,23 +135,43 @@ export async function prStateFor(gh, id, branch) {
   return PR_STATE_PRIORITY.find((state) => states.has(state)) ?? "NONE";
 }
 
-export async function inspectWorktrees(ctx) {
+export async function inspectEntry(entry, { ctx, git, id, worktreesRoot }) {
+  const status = worktreeStatus(entry, git, ctx.now);
+  const record = readOwnerRecord(id, ctx.env, entry);
+  const lock = entry.locked ? entry.lockReason : null;
+  const flags = [];
+  if (!status.exists || entry.prunable) flags.push("missing");
+  if (entry.locked) flags.push("locked");
+  if (status.dirty) flags.push("dirty");
+  if (!entry.main && !isInside(entry.path, worktreesRoot)) flags.push("legacy-location");
+  if (record) flags.push("gdm-owned");
+  const pr = entry.main || !entry.branch ? null : await prStateFor(ctx.gh, id, entry.branch);
+  return {
+    path: entry.path,
+    branch: entry.branch,
+    main: entry.main,
+    locked: entry.locked,
+    lock,
+    owner: record?.owner ?? null,
+    lock_age_seconds: describeLock(lock, ctx.now).ageSeconds,
+    ...status,
+    pr,
+    flags,
+  };
+}
+
+export function worktreeContext(ctx) {
   const git = gitFrom(ctx);
   const id = repoIdentity(ctx.cwd, git);
   const { worktrees_root: worktreesRoot } = loadUserConfig(ctx.env);
-  const entries = listWorktrees(git, id.root);
+  return { ctx, git, id, worktreesRoot, entries: listWorktrees(git, id.root) };
+}
+
+export async function inspectWorktrees(ctx) {
+  const context = worktreeContext(ctx);
   const inspected = [];
-  for (const entry of entries) {
-    const status = worktreeStatus(entry, git, ctx.now);
-    const flags = [];
-    if (!status.exists || entry.prunable) flags.push("missing");
-    if (entry.locked) flags.push("locked");
-    if (status.dirty) flags.push("dirty");
-    if (!entry.main && !isInside(entry.path, worktreesRoot)) flags.push("legacy-location");
-    const pr = entry.main || !entry.branch ? null : await prStateFor(ctx.gh, id, entry.branch);
-    inspected.push({ path: entry.path, branch: entry.branch, main: entry.main, locked: entry.locked, ...status, pr, flags });
-  }
-  return { id, worktreesRoot, git, entries: inspected };
+  for (const entry of context.entries) inspected.push(await inspectEntry(entry, context));
+  return { ...context, entries: inspected };
 }
 
 function hasWorktreeMarker(dir) {
@@ -188,7 +200,7 @@ export function findOrphanDirs(repoDir, registeredPaths) {
 
 export function pruneBlocker(item, cwd) {
   if (!item.branch) return "detached HEAD";
-  if (item.locked) return "locked";
+  if (item.locked) return `locked${item.lock ? ` (${item.lock})` : ""}; run gdm worktrees release first`;
   if (!item.exists) return "path missing";
   if (item.dirty === null) return "status unavailable";
   if (item.dirty) return "dirty";

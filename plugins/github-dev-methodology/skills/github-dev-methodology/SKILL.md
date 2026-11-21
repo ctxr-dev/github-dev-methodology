@@ -2,7 +2,7 @@
 name: github-dev-methodology
 description: GitHub Issues + Projects workflow for AI agents - PR review loop, issue schema, plan-to-issues, worktrees and stacked PRs, merge authority. Use for any branch, issue, PR, review or merge work in a repo that has .github-dev-methodology/config.json.
 metadata:
-  version: 1.0.0
+  version: 1.0.1
 ---
 
 # github-dev-methodology
@@ -99,9 +99,11 @@ Sections inside these files carry their own flags: `copilot_review` (in `pr-loop
 | `gdm pr watch <owner/repo#N>... [--bounded <sec>] [--max-wait <sec>] [--json]` | Wait on the exit predicate. |
 | `gdm pr threads <pr> [--author <login>] [--resolve <threadId>...] [--json]` | List or resolve unresolved review threads. |
 | `gdm pr can-merge <pr>` | Merge-authority decision. Exit 0 means you may merge. |
-| `gdm worktrees add <branch> [--base <ref>]` | Create a branch worktree. Prints its path. |
-| `gdm worktrees census [--json]` | List worktrees with dirty state and PR state. |
-| `gdm worktrees prune` | Remove clean worktrees whose PR is merged. |
+| `gdm worktrees add <branch> [--base <ref>] [--owner <text>]` | Create a branch worktree, record its owner and lock it as your lease. Prints its path. |
+| `gdm worktrees release [<path\|branch>]` | Drop the lease when your session ends. Defaults to the current worktree. |
+| `gdm worktrees census [--json]` | List worktrees with dirty state, PR state, owner and lock age. |
+| `gdm worktrees prune <path\|branch>... [--json]` | Remove the named worktrees when released, clean and merged. |
+| `gdm worktrees prune --all-merged [--json]` | Owner cleanup: remove every released gdm worktree that is clean and merged. |
 | `gdm plan sync <manifest.json> [--dry-run]` | Create or complete a sub-issue tree from a manifest. |
 | `gdm validate tree <issue-url> [--up]` | Check the sub-issue tree; `--up` walks to the root. |
 | `gdm validate issues <owner/repo> [--touched 1,2] [--state open\|all]` | Check issue body sections. |

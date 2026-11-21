@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-21
+
+### Fixed
+
+- `gdm worktrees prune` no longer removes worktrees that belong to other agents or other projects, and never touches client-managed worktrees (`<repo>/.claude/worktrees`, `~/.codex/worktrees`, `~/.omp/wt`). It now needs explicit targets or `--all-merged`.
+
+### Added
+
+- Worktree lease: `gdm worktrees add` records the owner under `~/.github-dev-methodology/state/` and takes a `git worktree lock` with the reason `gdm: owner=<owner> created=<iso>`. New flag `--owner`.
+- `gdm worktrees release [<path|branch>]` drops the lease and never unlocks a lock held by another tool.
+- `gdm worktrees prune --all-merged` for owner cleanup. It considers only released, gdm-owned worktrees inside the worktree root.
+- `gdm worktrees prune` deletes the owner record and empty parent directories after a removal.
+- `gdm worktrees census` reports `owner`, `lock`, `lock_age_seconds` and the `gdm-owned` flag.
+
 ## [1.0.0] - 2026-11-21
 
 ### Changed
