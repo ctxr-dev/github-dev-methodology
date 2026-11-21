@@ -160,7 +160,7 @@ Order of precedence: file gate (frontmatter), then section gate (a `Skip this se
 ~/.github-dev-methodology/                 (GDM_HOME)
 ├── config.json                            user config (optional)
 ├── worktrees/<host>/<owner>/<repo>/<branch>
-└── state/<host>/<owner>/<repo>/           state such as plans/<plan_id>.ledger.json
+└── state/<host>/<owner>/<repo>/           state such as plans/<plan_id>.ledger.json and worktrees/<branch>.json
 
 <repo>/
 ├── AGENTS.md                              one marked block: gdm:start ... gdm:end

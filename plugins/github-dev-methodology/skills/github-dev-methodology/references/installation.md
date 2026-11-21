@@ -9,7 +9,7 @@ Requirements: Node 20 or newer, `git`, and the GitHub CLI `gh`, logged in.
 ### Claude Code
 
 ```sh
-claude plugin marketplace add ctxr-dev/github-dev-methodology#v1.0.0
+claude plugin marketplace add ctxr-dev/github-dev-methodology#v1.0.1
 claude plugin install github-dev-methodology@gdm
 ```
 
@@ -38,7 +38,7 @@ OMP can also load plugins from Claude's registry when its `claude-plugins` provi
 ### Codex
 
 ```sh
-codex plugin marketplace add ctxr-dev/github-dev-methodology --ref v1.0.0
+codex plugin marketplace add ctxr-dev/github-dev-methodology --ref v1.0.1
 codex plugin add github-dev-methodology@gdm
 ```
 

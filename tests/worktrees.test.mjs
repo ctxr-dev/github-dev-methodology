@@ -1,68 +1,8 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { main } from "../plugins/github-dev-methodology/skills/github-dev-methodology/scripts/gdm.mjs";
-import { createGh } from "../plugins/github-dev-methodology/skills/github-dev-methodology/scripts/lib/gh.mjs";
-import { spawnGit } from "../plugins/github-dev-methodology/skills/github-dev-methodology/scripts/lib/repo-identity.mjs";
-
-const ORIGIN_URL = "https://github.com/acme/app.git";
-const IDENTITY = ["-c", "user.name=Test", "-c", "user.email=test@example.com"];
-
-function git(cwd, ...args) {
-  return execFileSync("git", [...IDENTITY, ...args], { cwd, encoding: "utf8" }).trim();
-}
-
-function fixture() {
-  const base = realpathSync(mkdtempSync(join(tmpdir(), "gdm-wt-")));
-  const source = join(base, "src");
-  mkdirSync(source);
-  git(source, "init", "-q", "-b", "main");
-  git(source, "commit", "-q", "--allow-empty", "-m", "initial");
-  git(base, "clone", "-q", "--bare", source, "origin.git");
-  git(base, "clone", "-q", join(base, "origin.git"), "checkout");
-  const checkout = join(base, "checkout");
-  git(checkout, "remote", "set-head", "origin", "-a");
-  const home = join(base, "home");
-  return { base, checkout, home, worktrees: join(home, "worktrees", "github.com", "acme", "app") };
-}
-
-function gitWithGithubOrigin(args, cwd) {
-  if (args[0] === "remote" && args[1] === "get-url" && args[2] === "origin") {
-    return { status: 0, stdout: `${ORIGIN_URL}\n`, stderr: "" };
-  }
-  return spawnGit(args, cwd);
-}
-
-function fakeGh(stateByBranch = {}) {
-  const calls = [];
-  const runner = (args) => {
-    calls.push(args);
-    const branch = args[args.indexOf("--head") + 1];
-    const state = stateByBranch[branch];
-    return { status: 0, stdout: JSON.stringify(state ? [{ state }] : []), stderr: "" };
-  };
-  return { gh: createGh(runner), calls };
-}
-
-async function gdm(env, argv, { ghStates = {}, cwd } = {}) {
-  const out = [];
-  const err = [];
-  const { gh, calls } = fakeGh(ghStates);
-  const code = await main(argv, {
-    cwd: cwd ?? env.checkout,
-    env: { ...process.env, GDM_HOME: env.home },
-    git: gitWithGithubOrigin,
-    gh,
-    stdout: { write: (text) => out.push(text) },
-    stderr: { write: (text) => err.push(text) },
-  });
-  return { code, out: out.join(""), err: err.join(""), calls };
-}
-
-const lastLine = (text) => text.trim().split("\n").at(-1);
+import { fixture, git, gdm, lastLine } from "./helpers/worktree-env.mjs";
 
 test("add creates the worktree at <home>/worktrees/<host>/<owner>/<repo>/<branch> from origin's default branch", async () => {
   const env = fixture();
@@ -116,6 +56,12 @@ test("add exits 1 for an unknown base ref and 64 without a branch", async () => 
   assert.equal(usage.code, 64);
 });
 
+async function addReleased(env, branch) {
+  const path = lastLine((await gdm(env, ["worktrees", "add", branch])).out);
+  await gdm(env, ["worktrees", "release", branch]);
+  return path;
+}
+
 test("census lists main, dirty and legacy-location worktrees and orphan directories", async () => {
   const env = fixture();
   const added = await gdm(env, ["worktrees", "add", "fix/1-x"]);
@@ -133,7 +79,7 @@ test("census lists main, dirty and legacy-location worktrees and orphan director
   const byBranch = Object.fromEntries(report.worktrees.map((item) => [item.branch, item]));
   assert.equal(byBranch.main.main, true);
   assert.equal(byBranch.main.pr, null);
-  assert.deepEqual(byBranch["fix/1-x"].flags, ["dirty"]);
+  assert.deepEqual(byBranch["fix/1-x"].flags, ["locked", "dirty", "gdm-owned"]);
   assert.equal(byBranch["fix/1-x"].pr, "OPEN");
   assert.equal(byBranch["fix/1-x"].dirty, true);
   assert.equal(typeof byBranch["fix/1-x"].lastCommitAgeSeconds, "number");
@@ -159,12 +105,12 @@ test("prune removes clean merged worktrees and their branch, keeps dirty, open a
   const env = fixture();
   const paths = {};
   for (const branch of ["fix/1-merged", "fix/2-dirty", "fix/3-open", "fix/4-none"]) {
-    paths[branch] = lastLine((await gdm(env, ["worktrees", "add", branch])).out);
+    paths[branch] = await addReleased(env, branch);
   }
   writeFileSync(join(paths["fix/2-dirty"], "wip.txt"), "x");
   const ghStates = { "fix/1-merged": "MERGED", "fix/2-dirty": "MERGED", "fix/3-open": "OPEN" };
 
-  const result = await gdm(env, ["worktrees", "prune", "--json"], { ghStates });
+  const result = await gdm(env, ["worktrees", "prune", ...Object.keys(paths), "--json"], { ghStates });
   assert.equal(result.code, 0, result.err);
   const report = JSON.parse(result.out);
   assert.deepEqual(report.removed.map((item) => item.branch), ["fix/1-merged"]);
@@ -180,9 +126,9 @@ test("prune removes clean merged worktrees and their branch, keeps dirty, open a
 
 test("prune never force-deletes: an unmerged branch survives and is reported", async () => {
   const env = fixture();
-  const path = lastLine((await gdm(env, ["worktrees", "add", "fix/5-ahead"])).out);
+  const path = await addReleased(env, "fix/5-ahead");
   git(path, "commit", "-q", "--allow-empty", "-m", "unmerged work");
-  const result = await gdm(env, ["worktrees", "prune"], { ghStates: { "fix/5-ahead": "MERGED" } });
+  const result = await gdm(env, ["worktrees", "prune", "fix/5-ahead"], { ghStates: { "fix/5-ahead": "MERGED" } });
   assert.equal(result.code, 0, result.err);
   assert.match(result.out, /removed: .*fix\/5-ahead.*\(branch kept: .*not fully merged/);
   assert.ok(!existsSync(path));
@@ -191,8 +137,8 @@ test("prune never force-deletes: an unmerged branch survives and is reported", a
 
 test("prune keeps the worktree the command runs from and never touches the main worktree", async () => {
   const env = fixture();
-  const path = lastLine((await gdm(env, ["worktrees", "add", "fix/6-here"])).out);
-  const result = await gdm(env, ["worktrees", "prune"], { ghStates: { "fix/6-here": "MERGED", main: "MERGED" }, cwd: path });
+  const path = await addReleased(env, "fix/6-here");
+  const result = await gdm(env, ["worktrees", "prune", "fix/6-here", "main"], { ghStates: { "fix/6-here": "MERGED", main: "MERGED" }, cwd: path });
   assert.equal(result.code, 0, result.err);
   assert.match(result.out, /kept: .*fix\/6-here.*current directory is inside/);
   assert.ok(existsSync(path));
